@@ -1,2 +1,2 @@
 # go2-vlm-agent
-Vision-Based Autonomous Vision Learning for the Unitree Go2
+Vision-Based Autonomous Behaviour Learning for the Unitree Go2

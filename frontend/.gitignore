@@ -1,0 +1,113 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+
+# =========================
+# ROS2 / Colcon
+# =========================
+build/
+install/
+log/
+
+# =========================
+# VSCode / IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Jupyter / Colab
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# AI / Model Files
+# =========================
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# HuggingFace cache
+.cache/
+huggingface/
+
+# =========================
+# Isaac Sim / Omniverse
+# =========================
+.omniverse/
+isaac-sim/
+*.usd.tmp
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Node / Frontend
+# =========================
+node_modules/
+.next/
+dist/
+
+# =========================
+# Environment Variables
+# =========================
+.env
+
+# =========================
+# Temporary Images / Videos
+# =========================
+*.mp4
+*.avi
+*.jpg
+*.png
+captures/
+outputs/

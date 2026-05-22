@@ -178,32 +178,6 @@ def main():
 
     time.sleep(1)
 
-
-    # ---------------------------------------------------
-    # BALANCE STAND
-    # ---------------------------------------------------
-
-    print("Entering balance stand mode...")
-
-    # Robot maintains stable standing posture
-    client.BalanceStand()
-
-    time.sleep(3)
-
-
-    # ---------------------------------------------------
-    # RECOVERY STAND
-    # ---------------------------------------------------
-
-    print("Recovery stand...")
-
-    # Robot attempts to recover stable posture
-    # Useful after falls or unstable states
-    client.RecoveryStand()
-
-    time.sleep(3)
-
-
     # ---------------------------------------------------
     # SIT / STAND DOWN
     # ---------------------------------------------------

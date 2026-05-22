@@ -1,7 +1,11 @@
 from transformers import Qwen2_5_VLForConditionalGeneration
 from transformers import AutoProcessor
 from qwen_vl_utils import process_vision_info
+from backend.camera_streamer import Go2CameraStreamer
 
+import time
+import cv2
+from PIL import Image
 
 import torch
 
@@ -20,15 +24,18 @@ processor = AutoProcessor.from_pretrained(
 print("Qwen loaded successfully.")
 
 
-def run_qwen(image_path, prompt):
-
+def run_qwen_with_frame(pil_image, prompt):
+    """
+    Accepts a PIL Image directly from the camera stream,
+    bypassing the need for a file path.
+    """
     messages = [
         {
             "role": "user",
             "content": [
                 {
                     "type": "image",
-                    "image": image_path,
+                    "image": pil_image, # Pass the PIL Image object directly
                 },
                 {
                     "type": "text",
@@ -57,7 +64,6 @@ def run_qwen(image_path, prompt):
     inputs = inputs.to("cuda")
 
     with torch.no_grad():
-
         generated_ids = model.generate(
             **inputs,
             max_new_tokens=128,
@@ -76,3 +82,49 @@ def run_qwen(image_path, prompt):
     )
 
     return output_text[0]
+
+def main():
+    # 1. Initialize the streamer with your target network interface
+    # (e.g., 'enp2s0' for wired, 'wlan0' for Wi-Fi)
+    network_interface = "enp2s0" 
+    streamer = Go2CameraStreamer(interface=network_interface)
+    streamer.start()
+
+    print("\nStarting Qwen2.5-VL Inference Loop. Press Ctrl+C to stop.")
+    prompt = "Describe what the robot sees in front of it in one short sentence."
+
+    try:
+        while True:
+            # 2. Grab the freshest frame from the background queue (blocks up to 5s)
+            frame = streamer.get_latest_frame(timeout=5)
+            
+            if frame is not None:
+                # 3. OpenCV reads in BGR format; Qwen expects RGB format
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                
+                # 4. Convert the NumPy array into a PIL Image object
+                pil_image = Image.fromarray(rgb_frame)
+
+                # 5. Run inference and track execution time
+                start_time = time.time()
+                description = run_qwen_with_frame(pil_image, prompt)
+                latency = time.time() - start_time
+                
+                print(f"\n--- Qwen Output ({latency:.2f}s) ---")
+                print(description)
+                print("----------------------------------\n")
+                
+                # Optional: Show what the camera is tracking in real-time
+                cv2.imshow("Go2 Front Camera Feed", frame)
+                if cv2.waitKey(1) == 27: # Press 'ESC' key to break out
+                    break
+            else:
+                print("Waiting for camera frames from DDS...")
+
+    except KeyboardInterrupt:
+        print("\nStopping VLM inference loop...")
+    finally:
+        cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    main()

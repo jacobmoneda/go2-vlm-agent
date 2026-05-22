@@ -30,7 +30,7 @@ class Go2CameraStreamer:
     def start(self):
         """Starts the DDS subscription loop in the background."""
         ChannelFactoryInitialize(0, self.interface)
-        self.sub = ChannelSubscriber("/frontvideostream", Go2FrontVideoData_)
+        self.sub = ChannelSubscriber("rt/frontvideostream", Go2FrontVideoData_)
         self.sub.Init(self._video_callback, 10)
         self.is_running = True
         print(f"[SDK] Subscribed to camera stream on {self.interface}")
@@ -41,3 +41,26 @@ class Go2CameraStreamer:
             return self.frame_queue.get(timeout=timeout)
         except queue.Empty:
             return None
+        
+
+if __name__ == "__main__":
+    interface = sys.argv[1] if len(sys.argv) > 1 else "eth0"
+    
+    streamer = Go2CameraStreamer(interface)
+    streamer.start()
+
+    print("Press 'q' to quit.")
+
+    while True:
+        frame = streamer.get_latest_frame(timeout=1.0)
+
+        if frame is None:
+            print("Waiting for frame...")
+            continue
+
+        cv2.imshow("Go2 Camera", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cv2.destroyAllWindows()

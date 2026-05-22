@@ -1,6 +1,6 @@
 from fastapi import FastAPI, WebSocket
 import uvicorn
-from qwen_engine import run_qwen
+from vlm.qwen_engine import run_qwen
 
 app = FastAPI()
 
@@ -16,9 +16,9 @@ async def websocket_endpoint(websocket: WebSocket):
         print("Received prompt:", prompt)
 
         # Placeholder AI response
-        #response = f"Robot received: {prompt}"
+        response = f"Robot received: {prompt}"
         # run qwen engine
-        response = run_qwen("view.jpg", prompt)
+        #response = run_qwen("view.jpg", prompt)
 
         # send response back to frontend
         await websocket.send_text(response)

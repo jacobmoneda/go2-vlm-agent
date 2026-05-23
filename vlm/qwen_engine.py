@@ -1,7 +1,7 @@
 from transformers import Qwen2_5_VLForConditionalGeneration
 from transformers import AutoProcessor
 from qwen_vl_utils import process_vision_info
-from backend.camera_streamer import Go2CameraStreamer
+from backend.camera.go2_camera import Go2Camera
 
 import time
 import cv2
@@ -87,7 +87,7 @@ def main():
     # 1. Initialize the streamer with your target network interface
     # (e.g., 'enp2s0' for wired, 'wlan0' for Wi-Fi)
     network_interface = "enp2s0" 
-    streamer = Go2CameraStreamer(interface=network_interface)
+    streamer = Go2Camera(interface=network_interface)
     streamer.start()
 
     print("\nStarting Qwen2.5-VL Inference Loop. Press Ctrl+C to stop.")

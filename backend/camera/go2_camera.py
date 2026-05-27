@@ -2,6 +2,8 @@
 
 import threading
 import time
+from typing import Optional
+
 import numpy as np
 import cv2
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
@@ -86,12 +88,12 @@ class Go2Camera:
     # Public interface — matches WebcamCamera abstraction
     # ------------------------------------------------------------------
 
-    def get_frame(self) -> np.ndarray | None:
+    def get_frame(self) -> Optional[np.ndarray]:
         """Returns latest frame as BGR numpy array. Returns None if no frame yet."""
         with self._lock:
             return self._frame_np.copy() if self._frame_np is not None else None
 
-    def get_frame_bytes(self) -> bytes | None:
+    def get_frame_bytes(self) -> Optional[bytes]:
         """Returns latest frame as raw JPEG bytes — direct input for Qwen-VL."""
         with self._lock:
             return self._frame_raw

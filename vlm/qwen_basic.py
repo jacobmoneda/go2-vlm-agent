@@ -12,7 +12,8 @@ print("Loading Qwen model...")
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     "Qwen/Qwen2.5-VL-2B-Instruct",
     device_map="auto",
-    load_in_4bit=True
+    torch_dtype=torch.float16,
+    #load_in_4bit=True #more memory efficient, but need to configure bitsandbytes for ARM
 )
 
 processor = AutoProcessor.from_pretrained(

@@ -268,4 +268,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# run= python3 go2_smolvlm_vision.py
         

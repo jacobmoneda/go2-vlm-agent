@@ -21,18 +21,9 @@ async def websocket_endpoint(websocket: WebSocket):
         print("Received prompt:", prompt)
 
         # Update shared state
-        shared_state.latest_prompt = prompt
+        shared_state.user_prompt = prompt
 
         # Acknowledge
         await websocket.send_text(
             f"Prompt updated: {prompt}"
         )
-
-
-if __name__ == "__main__":
-
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000
-    )

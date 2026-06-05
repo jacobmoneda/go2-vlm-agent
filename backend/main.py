@@ -6,7 +6,6 @@ from vlm.qwen_engine import run_qwen_with_frame
 from shared_state import shared_state
 from server import app
 
-# BASE_PROMPT = """You are the vision system of a quadruped robot..."""  # unused
 
 def perception_loop(camera: Go2Camera):
     print("[Main] Perception loop started.")

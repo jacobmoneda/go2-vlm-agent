@@ -6,7 +6,7 @@ from vlm.qwen_engine import run_qwen_with_frame
 from shared_state import shared_state
 from server import app
 
-BASE_PROMPT = """You are the vision system of a quadruped robot..."""  # your base prompt here
+# BASE_PROMPT = """You are the vision system of a quadruped robot..."""  # unused
 
 def perception_loop(camera: Go2Camera):
     print("[Main] Perception loop started.")
@@ -15,9 +15,8 @@ def perception_loop(camera: Go2Camera):
             continue
 
         frame_bytes = camera.get_frame_bytes()
-        full_prompt = f"{BASE_PROMPT}\n\nCurrent task: {shared_state.latest_prompt}"
 
-        result = run_qwen_with_frame(frame_bytes, full_prompt)
+        result = run_qwen_with_frame(frame_bytes, shared_state.latest_prompt)
         shared_state.latest_result = result
         print("[Perception]", result)
 

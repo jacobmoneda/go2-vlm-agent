@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 
+const WS_URL = import.meta.env.VITE_WS_URL || "ws://192.168.123.18:8000/ws";
+
 function App() {
   const [socket, setSocket] = useState(null);
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState("");
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws");
+    const ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
       console.log("Connected to server");

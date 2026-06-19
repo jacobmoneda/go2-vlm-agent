@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environments
+.env.local
+.env.robot
+venv/
+
+# Models
+models/
+
+# Node
+node_modules/

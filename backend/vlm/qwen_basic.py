@@ -3,16 +3,18 @@
 from transformers import Qwen2VLForConditionalGeneration
 from transformers import AutoProcessor
 from qwen_vl_utils import process_vision_info
+from backend.shared_state import shared_state
 
 import torch
 
-MODEL_PATH = "/home/unitree/go2-vlm-agent/models/qwen2-2b"
+#MODEL_PATH = "/home/unitree/go2-vlm-agent/models/qwen2-2b"
+MODEL_PATH = "/Users/jmone/models/qwen2-2b"
 
 print("Loading Qwen model...")
 
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_PATH,
-    device_map="cuda",
+    device_map="cpu",
     torch_dtype=torch.float16,
 )
 
@@ -23,8 +25,9 @@ print("Qwen loaded successfully.")
 
 if __name__ == '__main__':
 
-    image_path = ("test_frame_3.jpg")
-    prompt = ("Describe the image in two sentences.")
+    image_path = ("backend/vlm/demo.jpeg")
+    #prompt = ("Describe the image in two sentences.")
+    prompt = shared_state.latest_prompt
 
     messages = [
         {
@@ -58,7 +61,7 @@ if __name__ == '__main__':
         return_tensors="pt"
     )
 
-    inputs = inputs.to("cuda")
+    inputs = inputs.to("cpu")
 
     with torch.no_grad():
 

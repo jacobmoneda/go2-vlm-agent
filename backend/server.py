@@ -28,5 +28,5 @@ async def websocket_endpoint(websocket: WebSocket):
 
         # Acknowledge
         await websocket.send_text(
-            f"Prompt updated: {prompt}"
+            f"Prompt updated: {shared_state.latest_prompt}"
         )

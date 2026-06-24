@@ -2,6 +2,7 @@ from fastapi import FastAPI, WebSocket
 import uvicorn
 
 from backend.shared_state import shared_state
+from backend.utils.input_processor import preprocess_prompt, InvalidPromptError
 
 app = FastAPI()
 
@@ -22,6 +23,13 @@ async def websocket_endpoint(websocket: WebSocket):
         prompt = await websocket.receive_text()
 
         print("Received prompt:", prompt)
+
+        # Pre-process and validate
+        try:
+            prompt = preprocess_prompt(prompt)
+        except InvalidPromptError as e:
+            await websocket.send_text(f"Invalid prompt: {e}")
+            continue
 
         # Update shared state
         shared_state.user_prompt = prompt

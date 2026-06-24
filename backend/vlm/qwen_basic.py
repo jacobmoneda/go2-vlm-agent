@@ -1,33 +1,39 @@
 # runs qwen on an image file with a pre-determined prompt
 
-from transformers import Qwen2VLForConditionalGeneration
-from transformers import AutoProcessor
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
-from backend.shared_state import shared_state
 
 import torch
+from PIL import Image
 
-#MODEL_PATH = "/home/unitree/go2-vlm-agent/models/qwen2-2b"
-MODEL_PATH = "/Users/jmone/models/qwen2-2b"
+MODEL_PATH = "/home/unitree/go2-vlm-agent/models/qwen2-2b"
 
 print("Loading Qwen model...")
 
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     MODEL_PATH,
-    device_map="cpu",
+    device_map="cuda",
     torch_dtype=torch.float16,
 )
 
-processor = AutoProcessor.from_pretrained(MODEL_PATH)
+processor = AutoProcessor.from_pretrained(
+    MODEL_PATH,
+    min_pixels=256*28*28,
+    max_pixels=512*28*28   # limit image resolution to reduce VRAM
+)
 
 print("Qwen loaded successfully.")
 
 
 if __name__ == '__main__':
 
-    image_path = ("backend/vlm/demo.jpeg")
-    #prompt = ("Describe the image in two sentences.")
-    prompt = shared_state.latest_prompt
+    image_path = "backend/vlm/demo.jpeg"
+    prompt = "Describe the image in two sentences."
+
+    # Resize image before sending to VLM to reduce memory usage
+    img = Image.open(image_path).convert("RGB")
+    img = img.resize((640, 480))
+    img.save("/tmp/resized_input.jpg")
 
     messages = [
         {
@@ -35,7 +41,7 @@ if __name__ == '__main__':
             "content": [
                 {
                     "type": "image",
-                    "image": image_path,
+                    "image": "/tmp/resized_input.jpg",
                 },
                 {
                     "type": "text",
@@ -59,15 +65,12 @@ if __name__ == '__main__':
         videos=video_inputs,
         padding=True,
         return_tensors="pt"
-    )
-
-    inputs = inputs.to("cpu")
+    ).to("cuda")
 
     with torch.no_grad():
-
         generated_ids = model.generate(
             **inputs,
-            max_new_tokens=32,
+            max_new_tokens=128,
             do_sample=False
         )
 

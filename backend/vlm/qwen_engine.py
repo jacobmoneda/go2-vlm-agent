@@ -1,24 +1,23 @@
-from transformers import Qwen2_5_VLForConditionalGeneration
-from transformers import AutoProcessor
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
-from backend.camera.go2_camera import Go2Camera
-
-import time
-import cv2
-from PIL import Image
 
 import torch
+from PIL import Image
+
+MODEL_PATH = "/home/unitree/go2-vlm-agent/models/qwen2-2b"
 
 print("Loading Qwen model...")
 
-model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-    "Qwen/Qwen2.5-VL-3B-Instruct",
+model = Qwen2VLForConditionalGeneration.from_pretrained(
+    MODEL_PATH,
+    device_map="cuda",
     torch_dtype=torch.float16,
-    device_map="auto"
 )
 
 processor = AutoProcessor.from_pretrained(
-    "Qwen/Qwen2.5-VL-3B-Instruct"
+    MODEL_PATH,
+    min_pixels=256*28*28,
+    max_pixels=512*28*28   # limit image resolution to reduce VRAM
 )
 
 print("Qwen loaded successfully.")
@@ -29,13 +28,19 @@ def run_qwen_with_frame(pil_image, prompt):
     Accepts a PIL Image directly from the camera stream,
     bypassing the need for a file path.
     """
+
+    # Resize image before sending to VLM to reduce memory usage
+    img = Image.open(pil_image).convert("RGB")
+    img = img.resize((640, 480))
+    img.save("/tmp/resized_input.jpg")
+
     messages = [
         {
             "role": "user",
             "content": [
                 {
                     "type": "image",
-                    "image": pil_image, # Pass the PIL Image object directly
+                    "image": "/tmp/resized_input.jpg", # Use the resized image path for VLM input
                 },
                 {
                     "type": "text",
@@ -66,7 +71,7 @@ def run_qwen_with_frame(pil_image, prompt):
     with torch.no_grad():
         generated_ids = model.generate(
             **inputs,
-            max_new_tokens=128,
+            max_new_tokens=64,
             do_sample=False
         )
 
@@ -82,49 +87,3 @@ def run_qwen_with_frame(pil_image, prompt):
     )
 
     return output_text[0]
-
-def main():
-    # 1. Initialize the streamer with your target network interface
-    # (e.g., 'enp2s0' for wired, 'wlan0' for Wi-Fi)
-    network_interface = "enp2s0" 
-    streamer = Go2Camera(interface=network_interface)
-    streamer.start()
-
-    print("\nStarting Qwen2.5-VL Inference Loop. Press Ctrl+C to stop.")
-    prompt = "Describe what the robot sees in front of it in one short sentence."
-
-    try:
-        while True:
-            # 2. Grab the freshest frame from the background queue (blocks up to 5s)
-            frame = streamer.get_latest_frame(timeout=5)
-            
-            if frame is not None:
-                # 3. OpenCV reads in BGR format; Qwen expects RGB format
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                
-                # 4. Convert the NumPy array into a PIL Image object
-                pil_image = Image.fromarray(rgb_frame)
-
-                # 5. Run inference and track execution time
-                start_time = time.time()
-                description = run_qwen_with_frame(pil_image, prompt)
-                latency = time.time() - start_time
-                
-                print(f"\n--- Qwen Output ({latency:.2f}s) ---")
-                print(description)
-                print("----------------------------------\n")
-                
-                # Optional: Show what the camera is tracking in real-time
-                cv2.imshow("Go2 Front Camera Feed", frame)
-                if cv2.waitKey(1) == 27: # Press 'ESC' key to break out
-                    break
-            else:
-                print("Waiting for camera frames from DDS...")
-
-    except KeyboardInterrupt:
-        print("\nStopping VLM inference loop...")
-    finally:
-        cv2.destroyAllWindows()
-
-if __name__ == '__main__':
-    main()

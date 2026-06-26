@@ -23,24 +23,23 @@ processor = AutoProcessor.from_pretrained(
 print("Qwen loaded successfully.")
 
 
-def run_qwen_with_frame(pil_image, prompt):
+def run_qwen_with_frame(pil_image: Image.Image, prompt: str) -> str:
     """
     Accepts a PIL Image directly from the camera stream,
     bypassing the need for a file path.
     """
 
-    # Resize image before sending to VLM to reduce memory usage
-    img = Image.open(pil_image).convert("RGB")
-    img = img.resize((640, 480))
-    img.save("/tmp/resized_input.jpg")
-
     messages = [
+        { # remove if errors
+            "role": "system",
+            "content": "You are a robot vision system. You only respond with valid JSON objects. Never respond with plain text or markdown."
+        },
         {
             "role": "user",
             "content": [
                 {
                     "type": "image",
-                    "image": "/tmp/resized_input.jpg", # Use the resized image path for VLM input
+                    "image": pil_image,
                 },
                 {
                     "type": "text",
@@ -71,7 +70,7 @@ def run_qwen_with_frame(pil_image, prompt):
     with torch.no_grad():
         generated_ids = model.generate(
             **inputs,
-            max_new_tokens=64,
+            max_new_tokens=200,
             do_sample=False
         )
 

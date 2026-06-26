@@ -1,10 +1,13 @@
 # backend/main.py
 import threading
+import io
+import time
 import uvicorn
-from camera.go2_camera import Go2Camera
-from vlm.qwen_engine import run_qwen_with_frame
-from shared_state import shared_state
-from server import app
+from PIL import Image
+from backend.camera.go2_camera import Go2Camera
+from backend.vlm.qwen_engine import run_qwen_with_frame
+from backend.shared_state import shared_state
+from backend.server import app
 
 
 def perception_loop(camera: Go2Camera):
@@ -13,11 +16,17 @@ def perception_loop(camera: Go2Camera):
         if not camera.is_ready():
             continue
 
-        frame_bytes = camera.get_frame_bytes()
+        t0 = time.time()
 
-        result = run_qwen_with_frame(frame_bytes, shared_state.latest_prompt)
+        frame_bytes = camera.get_frame_bytes()
+        pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
+
+        result = run_qwen_with_frame(pil_image, shared_state.latest_prompt)
         shared_state.latest_result = result
-        print("[Perception]", result)
+
+        elapsed = time.time() - t0
+        print("[Prompt] ", shared_state.latest_prompt)
+        print(f"[Perception] {elapsed:.2f}s | {result}")
 
 def main():
     # Start camera

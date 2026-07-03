@@ -15,6 +15,7 @@ python3 -m backend.main
 3. In your local PC terminal
 
 ```bash
+cd ~/go2-vlm-agent/frontend
 npx vite --mode robot
 ```
 

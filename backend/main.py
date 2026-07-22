@@ -5,7 +5,14 @@ import time
 import uvicorn
 from PIL import Image
 from backend.camera.go2_camera import Go2Camera
+
+# CHOOSE A MODEL TO USE FOR VISION-LANGUAGE PERCEPTION
+# Uncomment one of the following lines to select the model
 from backend.vlm.qwen_engine import run_qwen_with_frame
+from backend.vlm.smolvlm_engine import run_smolvlm_with_frame
+from backend.vlm.phi_engine import run_phi_with_frame
+
+
 from backend.shared_state import shared_state
 from backend.server import app
 
@@ -21,7 +28,13 @@ def perception_loop(camera: Go2Camera):
         frame_bytes = camera.get_frame_bytes()
         pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
-        result = run_qwen_with_frame(pil_image, shared_state.latest_prompt)
+
+        # Run the selected VLM model on the captured frame
+        # uncomment the appropriate line below based on the model you want to use
+        
+        #result = run_qwen_with_frame(pil_image, shared_state.latest_prompt)
+        #result = run_smolvlm_with_frame(pil_image, shared_state.latest_prompt)
+        result = run_phi_with_frame(pil_image, shared_state.latest_prompt)
         shared_state.latest_result = result
 
         elapsed = time.time() - t0

@@ -12,9 +12,9 @@ def execute_action(action: str):
     elif action == "move_backward":
         client.Move(-0.3, 0, 0)
     elif action == "turn_left":
-        client.Move(0, 0, 0.5)
+        client.Move(0, 0, 0.1)
     elif action == "turn_right":
-        client.Move(0, 0, -0.5)
+        client.Move(0, 0, -0.1)
     elif action == "stop":
         client.StopMove()
     elif action == "avoid_obstacle":

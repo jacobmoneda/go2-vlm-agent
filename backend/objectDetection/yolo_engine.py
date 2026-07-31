@@ -2,14 +2,15 @@ from ultralytics import YOLO
 from PIL import Image
 import numpy as np
 
-MODEL_PATH = "/home/unitree/models/yolo11n.pt"
+MODEL_PATH = "/home/unitree/go2-vlm-agent/models/yolo11n.pt"
 
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
-CENTER_X = FRAME_WIDTH // 2
-CENTER_Y = FRAME_HEIGHT // 2
-DEAD_ZONE = 60          # pixels either side of center before turning
-CLOSE_THRESHOLD = 250   # bounding box height in pixels — stop if target this close
+FRAME_WIDTH = 1920
+FRAME_HEIGHT = 1080
+CENTER_X = FRAME_WIDTH // 2   # 960
+CENTER_Y = FRAME_HEIGHT // 2  # 540
+DEAD_ZONE = 60                # pixels either side of center before turning
+CLOSE_THRESHOLD = 600          # bounding box height in pixels — stop if target this close
+
 
 print("[YOLO] Loading model...")
 model = YOLO(MODEL_PATH)

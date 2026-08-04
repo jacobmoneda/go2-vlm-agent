@@ -1,0 +1,68 @@
+# backend/decision_logic.py
+
+VALID_TRACKING_ACTIONS = [
+    "move_forward",
+    "move_left",
+    "move_right",
+    "stop",
+    "search"
+]
+
+
+def decide_action(yolo_result, task="follow"):
+    """
+    Takes YOLO's tracking result and converts it into
+    a final robot movement command.
+
+    yolo_result should contain:
+    - action
+    - target_visible
+
+    task is the high-level instruction from Phi,
+    for example: follow, search, stop, or emote.
+    """
+
+    # If the high-level task says stop, stop immediately
+    if task == "stop":
+        return "stop"
+
+    # YOLO must return a dictionary
+    if not isinstance(yolo_result, dict):
+        print("[Decision] Invalid YOLO result.")
+        return "stop"
+
+    tracking_action = yolo_result.get("action")
+    target_visible = yolo_result.get("target_visible")
+
+    # Check target_visible is valid
+    if target_visible is not True and target_visible is not False:
+        print("[Decision] Invalid target_visible value.")
+        return "stop"
+
+    # Check YOLO action is recognised
+    if tracking_action not in VALID_TRACKING_ACTIONS:
+        print("[Decision] Unknown tracking action:", tracking_action)
+        return "stop"
+
+    # For a follow task, search if the target cannot be seen
+    if task == "follow" and target_visible is False:
+        return "search"
+
+    # Translate YOLO tracking names into robot movement names
+    if tracking_action == "move_left":
+        return "turn_left"
+
+    elif tracking_action == "move_right":
+        return "turn_right"
+
+    elif tracking_action == "move_forward":
+        return "move_forward"
+
+    elif tracking_action == "search":
+        return "search"
+
+    elif tracking_action == "stop":
+        return "stop"
+
+    # Safe fallback
+    return "stop"

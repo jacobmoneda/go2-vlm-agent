@@ -1,124 +1,224 @@
 # backend/decision_logic.py
+
 import io
 import time
 from PIL import Image
+
 from backend.camera.go2_camera import Go2Camera
 from backend.objectDetection.yolo_engine import get_detections
-from backend.robot_control import execute_action
+from backend.robotControl.robot_control import execute_action
+from backend.utils.input_processor import process_input, InvalidPromptError
 
+
+FRAME_WIDTH = 640
+CENTER_X = FRAME_WIDTH // 2
 DEAD_ZONE = 60
+CONFIDENCE_THRESHOLD = 0.5
 
 
-def decide_action(task, detections=None, frame_width=640):
+def follow_target(target_class, camera):
     """
-    Takes a processed user task and current YOLO detections
-    and decides what robot command should be executed.
+    Follow / track a target using YOLO.
 
-    Example task:
-    {
-        "action": "follow",
-        "target": "person"
-    }
+    This function:
+    - gets the current camera frame
+    - runs YOLO
+    - finds the requested target
+    - turns left/right to keep it centred
     """
 
-    action = task.get("action")
-    target_class = task.get("target")
+    if not camera.is_ready():
+        return
+
+    # Get frame from camera
+    frame_bytes = camera.get_frame_bytes()
+
+    pil_image = Image.open(
+        io.BytesIO(frame_bytes)
+    ).convert("RGB")
+
+    # Run YOLO
+    detections = get_detections(pil_image)
+
+    # Find detections that match the requested target
+    targets = [
+        detection
+        for detection in detections
+        if detection["label"] == target_class
+        and detection["confidence"] > CONFIDENCE_THRESHOLD
+    ]
+
+    # If target cannot be seen, stop
+    if not targets:
+        print(f"[Decision] No {target_class} detected.")
+        execute_action("stop")
+        return
+
+    # If multiple targets exist,
+    # use the one with the largest bounding box
+    target = max(
+        targets,
+        key=lambda detection: detection["box_height"]
+    )
+
+    offset_x = target["box_center_x"] - CENTER_X
+
+    print(
+        f"[Decision] Target={target_class} "
+        f"| x={int(target['box_center_x'])} "
+        f"| offset={int(offset_x)} "
+        f"| confidence={target['confidence']:.2f}"
+    )
+
+    # Target is too far to the right
+    if offset_x > DEAD_ZONE:
+        print("[Decision] Turning RIGHT")
+        execute_action("turn_right")
+
+    # Target is too far to the left
+    elif offset_x < -DEAD_ZONE:
+        print("[Decision] Turning LEFT")
+        execute_action("turn_left")
+
+    # Target is centred
+    else:
+        print("[Decision] Target centred.")
+        execute_action("stop")
+
+
+def run_task(task, camera):
+    """
+    Takes the processed user task and decides
+    which robot behaviour should run.
+    """
+
+    action = task["action"]
+    target = task["target"]
+
+    print(f"[Decision] Action: {action}")
+    print(f"[Decision] Target: {target}")
 
     # -------------------------
-    # FOLLOW / TRACK BEHAVIOUR
+    # FOLLOW / TRACK / WATCH
     # -------------------------
     if action in ["follow", "track", "watch"]:
 
-        if detections is None:
-            return "stop"
+        if target is None:
+            print("[Decision] No target supplied.")
+            execute_action("stop")
+            return
 
-        targets = [
-            d for d in detections
-            if d["label"] == target_class
-            and d["confidence"] > 0.5
-        ]
-
-        if not targets:
-            print("[Decision] Target not visible.")
-            return "stop"
-
-        # Largest bounding box = likely closest target
-        target = max(
-            targets,
-            key=lambda d: d["box_height"]
-        )
-
-        center_x = frame_width // 2
-        offset_x = target["box_center_x"] - center_x
-
-        print(
-            f"[Decision] Target={target_class} "
-            f"offset={int(offset_x)}"
-        )
-
-        if offset_x > DEAD_ZONE:
-            return "turn_right"
-
-        elif offset_x < -DEAD_ZONE:
-            return "turn_left"
-
-        else:
-            return "stop"
-
-
-    # -------------------------
-    # SIMPLE MOVEMENT COMMANDS
-    # -------------------------
-    elif action == "move":
-        return "move_forward"
-
-
-    elif action == "go to":
-        # This will eventually need perception/navigation logic
-        print("[Decision] 'go to' behaviour not implemented yet.")
-        return "stop"
-
+        follow_target(target, camera)
 
     # -------------------------
     # STOP
     # -------------------------
     elif action == "stop":
-        return "stop"
-
+        execute_action("stop")
 
     # -------------------------
     # POSTURE
     # -------------------------
     elif action == "sit":
-        return "sit"
+        execute_action("sit")
 
     elif action == "stand":
-        return "stand_up"
-
+        execute_action("stand_up")
 
     # -------------------------
     # EMOTES
     # -------------------------
     elif action == "wave":
-        return "emote_wave"
+        execute_action("emote_wave")
 
     elif action == "emote":
-        return "emote_wave"
+        execute_action("emote_wave")
 
+    # -------------------------
+    # SIMPLE MOVEMENT
+    # -------------------------
+    elif action == "move":
+        execute_action("move_forward")
 
     # -------------------------
     # FIND / SEARCH
     # -------------------------
     elif action in ["find", "search"]:
-        print("[Decision] Search behaviour not implemented yet.")
-        return "stop"
+        print("[Decision] Find/search behaviour not implemented yet.")
+        execute_action("stop")
 
+    # -------------------------
+    # GO TO
+    # -------------------------
+    elif action == "go to":
+        print("[Decision] Go-to behaviour not implemented yet.")
+        execute_action("stop")
+
+    # -------------------------
+    # DESCRIBE / LOOK
+    # -------------------------
+    elif action in ["describe", "look"]:
+        print("[Decision] VLM behaviour not connected yet.")
+        execute_action("stop")
 
     # -------------------------
     # SAFE DEFAULT
     # -------------------------
     else:
-        print(
-            f"[Decision] Unknown action: {action}"
-        )
-        return "stop"
+        print(f"[Decision] Unknown action: {action}")
+        execute_action("stop")
+
+
+def main():
+    """
+    Main integration flow.
+    """
+
+    print("[Decision] Starting robot decision system.")
+
+    # Get user prompt
+    user_prompt = input("Enter robot command: ")
+
+    # Process prompt
+    try:
+        task = process_input(user_prompt)
+
+    except InvalidPromptError as error:
+        print("[Input Error]", error)
+        return
+
+    # If hard-coded input processing cannot understand it,
+    # this will eventually go to the LLM fallback
+    if task["needs_llm"]:
+        print("[Decision] Prompt needs LLM fallback.")
+        print("[Decision] LLM is not connected yet.")
+        return
+
+    # Start camera
+    camera = Go2Camera(
+        network_interface="eth0"
+    )
+
+    camera.start()
+
+    print("[Decision] Camera started.")
+    print("[Decision] Press Ctrl+C to stop.\n")
+
+    try:
+        # Continuous loop for behaviours like following
+        while True:
+
+            run_task(
+                task,
+                camera
+            )
+
+            time.sleep(0.1)
+
+    except KeyboardInterrupt:
+        print("\n[Decision] Stopped by user.")
+        execute_action("stop")
+
+
+if __name__ == "__main__":
+    main()

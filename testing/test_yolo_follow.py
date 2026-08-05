@@ -45,6 +45,8 @@ try:
  
         if not targets:
             print("[YOLO] No target detected — stopping")
+            # calculate how often target is lost
+            target_lost_count += 1
             execute_action("stop")
             time.sleep(0.1)
             continue
@@ -54,9 +56,16 @@ try:
  
         offset_x = target["box_center_x"] - CENTER_X
         box_height = target["box_height"]
+        avg_follow_distance += box_height
  
         print(f"[YOLO] Target at x={int(target['box_center_x'])} | offset={int(offset_x)} | height={int(box_height)}px | confidence={target['confidence']:.2f}")
- 
+
+        # calculate % of frame with offset < 100 (centering accuracy)
+        if abs(offset_x) < 100:
+            center_frame += 1
+        total_frame += 1
+
+
         # priority 1 — turn to centre target first
         if offset_x > DEAD_ZONE:
             print("[Action] Turning RIGHT")
@@ -76,5 +85,17 @@ try:
         time.sleep(0.1)  # small delay between commands
  
 except KeyboardInterrupt:
+    # metrics
+    if total_frame > 0:
+        centering_accuracy = (center_frame / total_frame) * 100
+        print(f"\n[Test] Centering accuracy: {centering_accuracy:.2f}% over {total_frame} frames")
+        print(f"\n[Test] Target lost {target_lost_count} times")
+        avg_follow_distance /= total_frame
+        print(f"\n[Test] Average follow distance: {avg_follow_distance:.2f}px")
+    else:
+        print("\n[Test] No frames processed.")
+
+
+
     print("\n[Test] Stopped by user")
     execute_action("stop")

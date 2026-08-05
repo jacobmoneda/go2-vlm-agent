@@ -1,68 +1,124 @@
 # backend/decision_logic.py
+import io
+import time
+from PIL import Image
+from backend.camera.go2_camera import Go2Camera
+from backend.objectDetection.yolo_engine import get_detections
+from backend.robot_control import execute_action
 
-VALID_TRACKING_ACTIONS = [
-    "move_forward",
-    "move_left",
-    "move_right",
-    "stop",
-    "search"
-]
+DEAD_ZONE = 60
 
 
-def decide_action(yolo_result, task="follow"):
+def decide_action(task, detections=None, frame_width=640):
     """
-    Takes YOLO's tracking result and converts it into
-    a final robot movement command.
+    Takes a processed user task and current YOLO detections
+    and decides what robot command should be executed.
 
-    yolo_result should contain:
-    - action
-    - target_visible
-
-    task is the high-level instruction from Phi,
-    for example: follow, search, stop, or emote.
+    Example task:
+    {
+        "action": "follow",
+        "target": "person"
+    }
     """
 
-    # If the high-level task says stop, stop immediately
-    if task == "stop":
-        return "stop"
+    action = task.get("action")
+    target_class = task.get("target")
 
-    # YOLO must return a dictionary
-    if not isinstance(yolo_result, dict):
-        print("[Decision] Invalid YOLO result.")
-        return "stop"
+    # -------------------------
+    # FOLLOW / TRACK BEHAVIOUR
+    # -------------------------
+    if action in ["follow", "track", "watch"]:
 
-    tracking_action = yolo_result.get("action")
-    target_visible = yolo_result.get("target_visible")
+        if detections is None:
+            return "stop"
 
-    # Check target_visible is valid
-    if target_visible is not True and target_visible is not False:
-        print("[Decision] Invalid target_visible value.")
-        return "stop"
+        targets = [
+            d for d in detections
+            if d["label"] == target_class
+            and d["confidence"] > 0.5
+        ]
 
-    # Check YOLO action is recognised
-    if tracking_action not in VALID_TRACKING_ACTIONS:
-        print("[Decision] Unknown tracking action:", tracking_action)
-        return "stop"
+        if not targets:
+            print("[Decision] Target not visible.")
+            return "stop"
 
-    # For a follow task, search if the target cannot be seen
-    if task == "follow" and target_visible is False:
-        return "search"
+        # Largest bounding box = likely closest target
+        target = max(
+            targets,
+            key=lambda d: d["box_height"]
+        )
 
-    # Translate YOLO tracking names into robot movement names
-    if tracking_action == "move_left":
-        return "turn_left"
+        center_x = frame_width // 2
+        offset_x = target["box_center_x"] - center_x
 
-    elif tracking_action == "move_right":
-        return "turn_right"
+        print(
+            f"[Decision] Target={target_class} "
+            f"offset={int(offset_x)}"
+        )
 
-    elif tracking_action == "move_forward":
+        if offset_x > DEAD_ZONE:
+            return "turn_right"
+
+        elif offset_x < -DEAD_ZONE:
+            return "turn_left"
+
+        else:
+            return "stop"
+
+
+    # -------------------------
+    # SIMPLE MOVEMENT COMMANDS
+    # -------------------------
+    elif action == "move":
         return "move_forward"
 
-    elif tracking_action == "search":
-        return "search"
 
-    elif tracking_action == "stop":
+    elif action == "go to":
+        # This will eventually need perception/navigation logic
+        print("[Decision] 'go to' behaviour not implemented yet.")
         return "stop"
 
-    # Safe fallback
-    return "stop"
+
+    # -------------------------
+    # STOP
+    # -------------------------
+    elif action == "stop":
+        return "stop"
+
+
+    # -------------------------
+    # POSTURE
+    # -------------------------
+    elif action == "sit":
+        return "sit"
+
+    elif action == "stand":
+        return "stand_up"
+
+
+    # -------------------------
+    # EMOTES
+    # -------------------------
+    elif action == "wave":
+        return "emote_wave"
+
+    elif action == "emote":
+        return "emote_wave"
+
+
+    # -------------------------
+    # FIND / SEARCH
+    # -------------------------
+    elif action in ["find", "search"]:
+        print("[Decision] Search behaviour not implemented yet.")
+        return "stop"
+
+
+    # -------------------------
+    # SAFE DEFAULT
+    # -------------------------
+    else:
+        print(
+            f"[Decision] Unknown action: {action}"
+        )
+        return "stop"

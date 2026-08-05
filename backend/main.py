@@ -1,10 +1,11 @@
 # backend/main.py
 import threading
-import io
 import time
 import uvicorn
-from PIL import Image
 from backend.camera.go2_camera import Go2Camera
+
+from backend.decision_logic import run_task
+from backend.utils.input_processor import process_input, InvalidPromptError
 
 # CHOOSE A MODEL TO USE FOR VISION-LANGUAGE PERCEPTION
 # Uncomment one of the following lines to select the model
@@ -16,30 +17,38 @@ from backend.vlm.phi_engine import run_phi_with_frame
 from backend.shared_state import shared_state
 from backend.server import app
 
-
 def perception_loop(camera: Go2Camera):
     print("[Main] Perception loop started.")
+
     while True:
         if not camera.is_ready():
             continue
 
         t0 = time.time()
 
-        frame_bytes = camera.get_frame_bytes()
-        pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
+        if not prompt:
+            time.sleep(0.1)
+            continue
 
-        # Run the selected VLM model on the captured frame
-        # uncomment the appropriate line below based on the model you want to use
-        
-        #result = run_qwen_with_frame(pil_image, shared_state.latest_prompt)
-        #result = run_smolvlm_with_frame(pil_image, shared_state.latest_prompt)
-        result = run_phi_with_frame(pil_image, shared_state.latest_prompt)
-        shared_state.latest_result = result
+        try:
+            task = process_input(prompt)
+
+        except InvalidPromptError as error:
+            print(f"[Main] Invalid prompt: {error}")
+            time.sleep(0.1)
+            continue
+
+        print("[Prompt]", prompt)
+        print("[Task]", task)
+
+        run_task(task, camera)
 
         elapsed = time.time() - t0
-        print("[Prompt] ", shared_state.latest_prompt)
-        print(f"[Perception] {elapsed:.2f}s | {result}")
+        print(f"[Decision] {elapsed:.2f}s")
+
+        time.sleep(0.1)
+
 
 def main():
     # Start camera

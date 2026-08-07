@@ -9,8 +9,8 @@ from backend.utils.input_processor import process_input, InvalidPromptError
 
 # CHOOSE A MODEL TO USE FOR VISION-LANGUAGE PERCEPTION
 # Uncomment one of the following lines to select the model
-from backend.vlm.qwen_engine import run_qwen_with_frame
-from backend.vlm.smolvlm_engine import run_smolvlm_with_frame
+#from backend.vlm.qwen_engine import run_qwen_with_frame
+#from backend.vlm.smolvlm_engine import run_smolvlm_with_frame
 from backend.vlm.phi_engine import run_phi_with_frame
 
 

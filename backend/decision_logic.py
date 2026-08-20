@@ -85,6 +85,57 @@ def follow_target(target_class, camera):
         print("[Decision] Target centred.")
         execute_action("stop")
 
+def detect_object(target_class, camera):
+    """
+    Check whether YOLO can currently detect a requested object.
+
+    Does NOT move the robot.
+    Returns True if the object is detected and False if it is not.
+    """
+
+    if not camera.is_ready():
+        print("[Detection] Camera is not ready.")
+        return False
+
+    # Get current camera frame
+    frame_bytes = camera.get_frame_bytes()
+
+    if frame_bytes is None:
+        print("[Detection] No camera frame available.")
+        return False
+
+    pil_image = Image.open(
+        io.BytesIO(frame_bytes)
+    ).convert("RGB")
+
+    # Run YOLO
+    detections = get_detections(pil_image)
+
+    # Find detections matching the requested object
+    targets = [
+        detection
+        for detection in detections
+        if detection["label"] == target_class
+        and detection["confidence"] > CONFIDENCE_THRESHOLD
+    ]
+
+    # Object was not detected
+    if not targets:
+        print(f"[Detection] No {target_class} detected.")
+        return False
+
+    # Pick highest-confidence detection
+    target = max(
+        targets,
+        key=lambda detection: detection["confidence"]
+    )
+
+    print(
+        f"[Detection] Yes — {target_class} detected "
+        f"| confidence={target['confidence']:.2f}"
+    )
+
+    return True
 
 def run_task(task, camera):
     """
@@ -109,6 +160,22 @@ def run_task(task, camera):
             return
 
         follow_target(target, camera)
+
+    # -------------------------
+    # OBJECT DETECTION
+    # -------------------------
+    elif action in ["detect", "see"]:
+
+        if target is None:
+            print("[Decision] No object specified.")
+            return
+
+        detected = detect_object(target, camera)
+
+        if detected:
+            print(f"[Decision] Yes, I can see a {target}.")
+        else:
+            print(f"[Decision] No, I cannot see a {target}.")
 
     # -------------------------
     # STOP

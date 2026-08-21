@@ -47,6 +47,12 @@ function App() {
 
       <h2>Robot Response:</h2>
       <p>{response}</p>
+
+      <img 
+      src="http://192.168.123.18:8000/camera" 
+      alt="Robot Camera Feed"
+      style={{ width: "100%", borderRadius: "8px" }}
+      />
     </div>
   );
 }

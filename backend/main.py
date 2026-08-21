@@ -33,6 +33,7 @@ def main():
     # Start camera
     camera = Go2Camera(network_interface="eth0")
     camera.start()
+    shared_state.camera = camera
 
     # Start perception loop in background thread
     perception_thread = threading.Thread(

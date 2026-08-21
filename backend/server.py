@@ -17,8 +17,8 @@ async def health():
 async def camera_stream():
     async def generate():
         while True:
-            if camera.is_ready():
-                frame_bytes = camera.get_frame_bytes()
+            if shared_state.camera and shared_state.camera.is_ready():
+                frame_bytes = shared_state.camera.get_frame_bytes()
                 yield (
                     b"--frame\r\n"
                     b"Content-Type: image/jpeg\r\n\r\n" +

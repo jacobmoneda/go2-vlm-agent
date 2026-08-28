@@ -6,6 +6,7 @@ VALID_ACTIONS = [
     "follow", "find", "search", "go to", "move",
     "stop", "sit", "stand", "wave", "emote",
     "describe", "look", "watch", "track",
+    "detect", "see",
 ]
 
 BLOCKED_PHRASES = [

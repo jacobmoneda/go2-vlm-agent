@@ -1,58 +1,41 @@
 # backend/main.py
 import threading
+import io
 import time
 import uvicorn
+from PIL import Image
 from backend.camera.go2_camera import Go2Camera
-
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-ChannelFactoryInitialize(0, "eth0")
-
-from backend.decision_logic import run_task
-from backend.utils.input_processor import process_input, InvalidPromptError
-
+#from backend.vlm.qwen_engine import run_qwen_with_frame
 from backend.vlm.phi_engine import run_phi_with_frame
+#from backend.vlm.smolvlm_engine import run_smolvlm_with_frame
 from backend.shared_state import shared_state
 from backend.server import app
 
+
 def perception_loop(camera: Go2Camera):
     print("[Main] Perception loop started.")
-
     while True:
         if not camera.is_ready():
             continue
 
         t0 = time.time()
 
-        prompt = shared_state.user_prompt
+        frame_bytes = camera.get_frame_bytes()
+        pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
-        if not prompt:
-            time.sleep(0.1)
-            continue
-
-        try:
-            task = process_input(prompt)
-
-        except InvalidPromptError as error:
-            print(f"[Main] Invalid prompt: {error}")
-            time.sleep(0.1)
-            continue
-
-        print("[Prompt]", prompt)
-        print("[Task]", task)
-
-        run_task(task, camera)
+        #result = run_qwen_with_frame(pil_image, shared_state.latest_prompt)
+        result = run_phi_with_frame(pil_image, shared_state.latest_prompt)
+        #result = run_smolvlm_with_frame(pil_image, shared_state.latest_prompt)
+        shared_state.latest_result = result
 
         elapsed = time.time() - t0
-        print(f"[Decision] {elapsed:.2f}s")
-
-        time.sleep(0.1)
-
+        print("[Prompt] ", shared_state.latest_prompt)
+        print(f"[Perception] {elapsed:.2f}s | {result}")
 
 def main():
     # Start camera
     camera = Go2Camera(network_interface="eth0")
     camera.start()
-    shared_state.camera = camera
 
     # Start perception loop in background thread
     perception_thread = threading.Thread(

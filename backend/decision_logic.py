@@ -10,9 +10,10 @@ from backend.robotControl.robot_control import execute_action
 from backend.utils.input_processor import process_input, InvalidPromptError
 
 
-FRAME_WIDTH = 640
-CENTER_X = FRAME_WIDTH // 2
+FRAME_WIDTH = 1920
+CENTER_X = FRAME_WIDTH // 2  # 960
 DEAD_ZONE = 60
+CLOSE_THRESHOLD = 600
 CONFIDENCE_THRESHOLD = 0.5
 
 
@@ -24,66 +25,67 @@ def follow_target(target_class, camera):
     - gets the current camera frame
     - runs YOLO
     - finds the requested target
-    - turns left/right to keep it centred
+    - turns left/right to centre target
+    - moves forward if centred and target is far
+    - stops if centred and target is close
     """
 
     if not camera.is_ready():
         return
 
-    # Get frame from camera
+    # get frame from camera
     frame_bytes = camera.get_frame_bytes()
+    pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
-    pil_image = Image.open(
-        io.BytesIO(frame_bytes)
-    ).convert("RGB")
-
-    # Run YOLO
+    # run YOLO
     detections = get_detections(pil_image)
 
-    # Find detections that match the requested target
+    # filter for target class above confidence threshold
     targets = [
-        detection
-        for detection in detections
-        if detection["label"] == target_class
-        and detection["confidence"] > CONFIDENCE_THRESHOLD
+        d for d in detections
+        if d["label"] == target_class
+        and d["confidence"] > CONFIDENCE_THRESHOLD
     ]
 
-    # If target cannot be seen, stop
+    # if target cannot be seen, stop
     if not targets:
-        print(f"[Decision] No {target_class} detected.")
+        print(f"[Decision] No {target_class} detected — stopping")
         execute_action("stop")
         return
 
-    # If multiple targets exist,
-    # use the one with the largest bounding box
-    target = max(
-        targets,
-        key=lambda detection: detection["box_height"]
-    )
+    # pick nearest target — largest bounding box = closest
+    target = max(targets, key=lambda d: d["box_height"])
 
     offset_x = target["box_center_x"] - CENTER_X
+    box_height = target["box_height"]
 
     print(
         f"[Decision] Target={target_class} "
         f"| x={int(target['box_center_x'])} "
         f"| offset={int(offset_x)} "
+        f"| height={int(box_height)}px "
         f"| confidence={target['confidence']:.2f}"
     )
 
-    # Target is too far to the right
+    # priority 1 — turn to centre target first
     if offset_x > DEAD_ZONE:
         print("[Decision] Turning RIGHT")
         execute_action("turn_right")
 
-    # Target is too far to the left
     elif offset_x < -DEAD_ZONE:
         print("[Decision] Turning LEFT")
         execute_action("turn_left")
 
-    # Target is centred
+    # priority 2 — move forward if centred and far enough
+    elif box_height < CLOSE_THRESHOLD:
+        print("[Decision] Moving FORWARD")
+        execute_action("move_forward")
+
+    # priority 3 — stop if centred and close enough
     else:
-        print("[Decision] Target centred.")
+        print("[Decision] Close enough — stopping")
         execute_action("stop")
+
 
 def detect_object(target_class, camera):
     """
@@ -97,45 +99,35 @@ def detect_object(target_class, camera):
         print("[Detection] Camera is not ready.")
         return False
 
-    # Get current camera frame
     frame_bytes = camera.get_frame_bytes()
 
     if frame_bytes is None:
         print("[Detection] No camera frame available.")
         return False
 
-    pil_image = Image.open(
-        io.BytesIO(frame_bytes)
-    ).convert("RGB")
+    pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
-    # Run YOLO
     detections = get_detections(pil_image)
 
-    # Find detections matching the requested object
     targets = [
-        detection
-        for detection in detections
-        if detection["label"] == target_class
-        and detection["confidence"] > CONFIDENCE_THRESHOLD
+        d for d in detections
+        if d["label"] == target_class
+        and d["confidence"] > CONFIDENCE_THRESHOLD
     ]
 
-    # Object was not detected
     if not targets:
         print(f"[Detection] No {target_class} detected.")
         return False
 
-    # Pick highest-confidence detection
-    target = max(
-        targets,
-        key=lambda detection: detection["confidence"]
-    )
+    target = max(targets, key=lambda d: d["confidence"])
 
     print(
-        f"[Detection] Yes — {target_class} detected "
+        f"[Detection] {target_class} detected "
         f"| confidence={target['confidence']:.2f}"
     )
 
     return True
+
 
 def run_task(task, camera):
     """
@@ -155,9 +147,8 @@ def run_task(task, camera):
     if action in ["follow", "track", "watch"]:
 
         if target is None:
-            print("[Decision] No target supplied.")
-            execute_action("stop")
-            return
+            print("[Decision] No target supplied — defaulting to person")
+            target = "person"
 
         follow_target(target, camera)
 
@@ -196,10 +187,10 @@ def run_task(task, camera):
     # EMOTES
     # -------------------------
     elif action == "wave":
-        execute_action("emote_wave")
+        execute_action("hello")
 
     elif action == "emote":
-        execute_action("emote_wave")
+        execute_action("hello")
 
     # -------------------------
     # SIMPLE MOVEMENT
@@ -232,7 +223,5 @@ def run_task(task, camera):
     # SAFE DEFAULT
     # -------------------------
     else:
-        print(f"[Decision] Unknown action: {action}")
+        print(f"[Decision] Unknown action: '{action}' — stopping")
         execute_action("stop")
-
-

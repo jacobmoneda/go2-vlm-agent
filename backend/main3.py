@@ -13,7 +13,7 @@ from backend.objectDetection.yolo_engine import run_yolo_with_frame
 
 from backend.shared_state import shared_state
 from backend.server import app
-from backend.nlp.command_router import parse_command
+from backend.utils.command_router import parse_command
 
 def perception_loop(camera):
     while True:

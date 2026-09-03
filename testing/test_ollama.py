@@ -54,12 +54,35 @@ def extract_json(raw: str) -> dict:
         pass
 
     # strategy 2 — find first { ... } block
-    match = re.search(r'\{.*?\}', cleaned, re.DOTALL)
+    match = re.search(r'\{.*\}', cleaned, re.DOTALL)
     if match:
         try:
             return json.loads(match.group())
         except json.JSONDecodeError:
             pass
+
+    # strategy 3 — extract individual fields via regex (handles truncated output)
+    result = {}
+    nv = re.search(r'"needs_vision"\s*:\s*(true|false)', cleaned)
+    ac = re.search(r'"action"\s*:\s*"([^"]*)"', cleaned)
+    fc = re.search(r'"is_follow_command"\s*:\s*(true|false)', cleaned)
+    cf = re.search(r'"confidence"\s*:\s*([0-9.]+)', cleaned)
+    rs = re.search(r'"reasoning"\s*:\s*"([^"]*)"', cleaned)
+
+    if nv:
+        result["needs_vision"] = nv.group(1) == "true"
+    if ac:
+        result["action"] = ac.group(1)
+    if fc:
+        result["is_follow_command"] = fc.group(1) == "true"
+    if cf:
+        result["confidence"] = float(cf.group(1))
+    if rs:
+        result["reasoning"] = rs.group(1)
+
+    # return if we got at least the critical fields
+    if "needs_vision" in result and "is_follow_command" in result:
+        return result
 
     return None
 
@@ -71,7 +94,7 @@ def call_ollama(command: str) -> dict:
         "stream": False,
         "options": {
             "temperature": 0.0,    # fully deterministic
-            "num_predict": 120,    # short output only
+            "num_predict": 300,    # enough for full JSON
             "num_ctx": 512         # small context window — prevents bleeding
         }
     }

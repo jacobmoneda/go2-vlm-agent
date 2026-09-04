@@ -2,7 +2,7 @@ from transformers import AutoModelForCausalLM, AutoProcessor
 import torch
 from PIL import Image
 
-MODEL_PATH = "/home/unitree/go2-vlm-agent/models/Phi-3.5-vision-instruct"
+MODEL_PATH = "/home/unitree/models/Phi-3.5-vision-instruct"
 
 print("Loading Phi-3.5 model...")
 model = AutoModelForCausalLM.from_pretrained(

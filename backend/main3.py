@@ -19,6 +19,20 @@ from backend.utils.command_router import parse_command
 from backend.shared_state import shared_state
 from backend.server import app
 
+def warmup_ollama():
+    """Pre-load phi3 into GPU memory before first user command."""
+    import requests
+    print("[Main] Warming up Ollama...")
+    try:
+        requests.post("http://localhost:11434/api/generate", json={
+            "model": "phi3",
+            "prompt": "hello",
+            "stream": False,
+            "options": {"num_predict": 1}
+        }, timeout=120)
+        print("[Main] Ollama warmed up.")
+    except Exception as e:
+        print(f"[Main] Ollama warmup failed: {e} — keyword fallback will be used")
 
 def perception_loop(camera: Go2Camera):
     print("[Main] Perception loop started.")
@@ -150,6 +164,8 @@ def main():
     camera = Go2Camera(network_interface="eth0")
     camera.start()
     shared_state.camera = camera
+
+    warmup_ollama()
 
     perception_thread = threading.Thread(
         target=perception_loop,

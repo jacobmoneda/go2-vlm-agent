@@ -14,48 +14,31 @@ FRAME_WIDTH = 1920
 CENTER_X = FRAME_WIDTH // 2  # 960
 DEAD_ZONE = 60
 CLOSE_THRESHOLD = 600
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.2
 
 
-def follow_target(target_class, camera):
+def follow_target(target_class, pil_image):
     """
     Follow / track a target using YOLO.
-
-    This function:
-    - gets the current camera frame
-    - runs YOLO
-    - finds the requested target
-    - turns left/right to centre target
-    - moves forward if centred and target is far
-    - stops if centred and target is close
+    Accepts a PIL image directly instead of camera object.
     """
-
-    if not camera.is_ready():
-        return
-
-    # get frame from camera
-    frame_bytes = camera.get_frame_bytes()
-    pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
-
     # run YOLO
     detections = get_detections(pil_image)
 
-    # filter for target class above confidence threshold
+    print(f"[YOLO] All detections: {[(d['label'], round(d['confidence'], 2)) for d in detections]}")
+
     targets = [
         d for d in detections
         if d["label"] == target_class
         and d["confidence"] > CONFIDENCE_THRESHOLD
     ]
 
-    # if target cannot be seen, stop
     if not targets:
         print(f"[Decision] No {target_class} detected — stopping")
         execute_action("stop")
         return
 
-    # pick nearest target — largest bounding box = closest
     target = max(targets, key=lambda d: d["box_height"])
-
     offset_x = target["box_center_x"] - CENTER_X
     box_height = target["box_height"]
 
@@ -67,21 +50,15 @@ def follow_target(target_class, camera):
         f"| confidence={target['confidence']:.2f}"
     )
 
-    # priority 1 — turn to centre target first
     if offset_x > DEAD_ZONE:
         print("[Decision] Turning RIGHT")
         execute_action("turn_right")
-
     elif offset_x < -DEAD_ZONE:
         print("[Decision] Turning LEFT")
         execute_action("turn_left")
-
-    # priority 2 — move forward if centred and far enough
     elif box_height < CLOSE_THRESHOLD:
         print("[Decision] Moving FORWARD")
         execute_action("move_forward")
-
-    # priority 3 — stop if centred and close enough
     else:
         print("[Decision] Close enough — stopping")
         execute_action("stop")

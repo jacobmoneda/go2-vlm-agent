@@ -4,24 +4,31 @@ from PIL import Image
 
 MODEL_PATH = "/home/unitree/models/Phi-3.5-vision-instruct"
 
-print("Loading Phi-3.5 model...")
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_PATH,
-    trust_remote_code=True,
-    device_map="cuda",
-    torch_dtype=torch.float16,
-    low_cpu_mem_usage=True,
-    _attn_implementation="eager"  # use if flash_attn not available
-)
-processor = AutoProcessor.from_pretrained(
-    MODEL_PATH,
-    trust_remote_code=True,
-    num_crops=4  # limit image crops to reduce VRAM
-)
-print("Phi-3.5 loaded successfully.")
+_model = None
+_processor = None
 
+def _load_model():
+    global _model, _processor
+    if _model is None:
+        print("[Phi] Loading model...")
+        _model = AutoModelForCausalLM.from_pretrained(
+            MODEL_PATH,
+            trust_remote_code=True,
+            device_map="cuda",
+            torch_dtype=torch.float16,
+            low_cpu_mem_usage=True,
+            _attn_implementation="eager"
+        )
+        _processor = AutoProcessor.from_pretrained(
+            MODEL_PATH,
+            trust_remote_code=True,
+            num_crops=1
+        )
+        print("[Phi] Model loaded.")
+    return _model, _processor
 
 def run_phi_with_frame(pil_image: Image.Image, prompt: str) -> str:
+    model, processor = _load_model()
     """
     Accepts a PIL Image directly from the camera stream,
     bypassing the need for a file path.

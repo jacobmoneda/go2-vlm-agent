@@ -146,7 +146,7 @@ def perception_loop(camera: Go2Camera):
                 pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
                 # run YOLO follow logic
-                follow_target(target_class, camera)
+                follow_target(target_class, pil_image)
 
                 elapsed = time.time() - t0
                 shared_state.latest_result = {

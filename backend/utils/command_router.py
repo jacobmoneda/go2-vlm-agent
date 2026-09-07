@@ -4,7 +4,7 @@ import re
 import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "phi3"
+OLLAMA_MODEL = "phi3-fast"
 
 SYSTEM_PROMPT = """You are a robot command parser. Output ONLY a JSON object, no markdown, no explanation.
 

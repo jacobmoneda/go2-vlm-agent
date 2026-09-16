@@ -20,19 +20,35 @@ from backend.shared_state import shared_state
 from backend.server import app
 
 def warmup_ollama():
-    """Pre-load phi3 into GPU memory before first user command."""
     import requests
+    import time
+
     print("[Main] Warming up Ollama...")
+    start = time.time()
+
     try:
-        requests.post("http://localhost:11434/api/generate", json={
-            "model": "phi3",
-            "prompt": "hello",
-            "stream": False,
-            "options": {"num_predict": 1}
-        }, timeout=120)
-        print("[Main] Ollama warmed up.")
+        r = requests.post(
+            "http://localhost:11434/api/generate",
+            json={
+                "model": "phi3-fast",
+                "prompt": "",
+                "stream": False,
+                "keep_alive": -1,
+            },
+            timeout=600,
+        )
+
+        r.raise_for_status()
+        d = r.json()
+
+        print(f"[Main] Wall time: {time.time() - start:.2f}s")
+        print(f"[Main] load_duration:        {d.get('load_duration', 0)/1e9:.2f}s")
+        print(f"[Main] prompt_eval_duration: {d.get('prompt_eval_duration', 0)/1e9:.2f}s")
+        print(f"[Main] eval_duration:        {d.get('eval_duration', 0)/1e9:.2f}s")
+        print(f"[Main] total_duration:       {d.get('total_duration', 0)/1e9:.2f}s")
+
     except Exception as e:
-        print(f"[Main] Ollama warmup failed: {e} — keyword fallback will be used")
+        print(f"[Main] warmup failed: {e}")
 
 def perception_loop(camera: Go2Camera):
     print("[Main] Perception loop started.")

@@ -71,6 +71,9 @@ def perception_loop(camera: Go2Camera):
             time.sleep(0.05)
             continue
 
+        # start timer when new prompt is detected
+        t_start = time.time()
+
         # Step 1 — input_processor: guard against injection and invalid commands
         try:
             prompt = preprocess_prompt(raw_prompt)
@@ -78,6 +81,9 @@ def perception_loop(camera: Go2Camera):
             print(f"[Main] Invalid prompt: {e}")
             last_processed_prompt = raw_prompt
             continue
+
+        # preprocessing
+        t_preprocess = time.time()
 
         # Step 2 — command_router: LLM determines intent
         print(f"[Main] Routing prompt: '{prompt}'")
@@ -89,6 +95,9 @@ def perception_loop(camera: Go2Camera):
         confidence = parsed.get("confidence", 0.0)
 
         print(f"[Router] needs_vision={needs_vision} | is_follow={is_follow} | action={action} | confidence={confidence:.2f}")
+
+        # routing
+        t_route = time.time()
 
         # ------------------------------------------------
         # COMMAND EXECUTION
@@ -109,6 +118,8 @@ def perception_loop(camera: Go2Camera):
                 execute_action("stop")
 
             last_processed_prompt = raw_prompt
+            t_execute = time.time()
+            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
 
         # --- Path 2: Vision needed — run Phi (one shot) ---
         elif needs_vision and not is_follow:
@@ -136,7 +147,9 @@ def perception_loop(camera: Go2Camera):
                 execute_action("stop")
 
             last_processed_prompt = raw_prompt
-
+            t_execute = time.time()
+            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
+            
         # --- Path 3: Follow command — run YOLO continuously ---
         elif is_follow:
             print("[Main] Starting YOLO follow loop...")
@@ -174,6 +187,9 @@ def perception_loop(camera: Go2Camera):
                 time.sleep(0.1)  # ~10fps follow loop
 
             last_processed_prompt = shared_state.user_prompt
+            t_execute = time.time()
+            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
+        
 
 
 def main():

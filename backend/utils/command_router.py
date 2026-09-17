@@ -10,13 +10,26 @@ SYSTEM_PROMPT = """You are a robot command parser. Output ONLY a JSON object, no
 
 Valid actions: move_forward, move_backward, move_left, move_right, turn_left, turn_right, stop, sit, stand_up, stand_down, hello, dance1, dance2, stretch, pose, heart, front_flip, back_flip, trot_run, speed_slow, speed_normal, speed_fast, search
 
-JSON format: {"needs_vision": bool, "action": "action or null", "is_follow_command": bool, "confidence": float, "reasoning": "one sentence"}
+Natural language mappings:
+- wave, say hello, greet -> hello
+- dance -> dance1
+- backflip -> back_flip
+- frontflip -> front_flip
+- forward -> move_forward
+- backward, back -> move_backward
+- faster, speed up -> speed_fast
+- slower, slow down -> speed_slow
+
+JSON format:
+{"needs_vision": bool, "action": "action or null", "is_follow_command": bool, "confidence": float, "reasoning": "one sentence"}
 
 Rules:
 - needs_vision=true only if the command requires seeing the camera to decide
 - is_follow_command=true for follow/track/chase/find commands
 - if is_follow_command=true, set action=null
 - if needs_vision=true, set action=null
+- if needs_vision=false and is_follow_command=false and the command matches a valid robot action, action MUST NOT be null
+- use the natural language mappings above when selecting an action
 
 Command: """
 
@@ -124,7 +137,7 @@ def parse_command(user_command: str) -> dict:
         "stream": False,
         "options": {
             "temperature": 0.0,
-            "num_predict": 300,
+            "num_predict": 500,
             "num_ctx": 512
         }
     }
@@ -133,7 +146,7 @@ def parse_command(user_command: str) -> dict:
         response = requests.post(OLLAMA_URL, json=payload, timeout=300)
         response.raise_for_status()
         raw = response.json().get("response", "")
-        print(f"[Router] Raw output: {raw[:100].strip()}")
+        print(f"[Router] Raw output: {raw!r}")
 
         parsed = extract_json(raw)
 

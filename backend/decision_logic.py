@@ -1,9 +1,6 @@
 # backend/decision_logic.py
 from PIL import Image
 
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-ChannelFactoryInitialize(0, "eth0")
-
 from backend.objectDetection.yolo_engine import get_detections
 from backend.robotControl.robot_control import execute_action
 

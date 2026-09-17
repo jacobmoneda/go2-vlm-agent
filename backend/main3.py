@@ -113,6 +113,13 @@ def perception_loop(camera: Go2Camera):
                     "action": action,
                     "reasoning": parsed.get("reasoning", "")
                 }
+            elif not action:
+                from backend.utils.command_router import _keyword_fallback
+                fallback = _keyword_fallback(prompt)
+                fallback_action = fallback.get("action")
+                if fallback_action:
+                    print(f"[Main] Keyword fallback: {fallback_action}")
+                    execute_action(fallback_action)
             else:
                 print(f"[Main] Low confidence ({confidence:.2f}) — stopping")
                 execute_action("stop")
@@ -174,7 +181,6 @@ def perception_loop(camera: Go2Camera):
                 frame_bytes = camera.get_frame_bytes()
                 pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
-                # run YOLO follow logic
                 follow_target(target_class, pil_image)
 
                 elapsed = time.time() - t0
@@ -186,7 +192,7 @@ def perception_loop(camera: Go2Camera):
 
                 time.sleep(0.1)  # ~10fps follow loop
 
-            last_processed_prompt = shared_state.user_prompt
+            last_processed_prompt = raw_prompt
             t_execute = time.time()
             print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
         

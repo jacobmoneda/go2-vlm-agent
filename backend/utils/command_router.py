@@ -138,7 +138,11 @@ def parse_command(user_command: str) -> dict:
         "options": {
             "temperature": 0.0,
             "num_predict": 500,
-            "num_ctx": 512
+            "num_ctx": 512,
+            "stop": [
+                "\n\nCommand:",
+                "\nCommand:"
+            ]
         }
     }
 

@@ -11,7 +11,6 @@ ChannelFactoryInitialize(0, "eth0")
 
 from backend.camera.go2_camera import Go2Camera
 from backend.vlm.phi_engine import run_phi_with_frame
-from backend.objectDetection.yolo_engine import get_detections
 from backend.robotControl.robot_control import execute_action
 from backend.decision_logic import follow_target
 from backend.utils.input_processor import preprocess_prompt, InvalidPromptError

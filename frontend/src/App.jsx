@@ -5,7 +5,7 @@ const WS_URL = import.meta.env.VITE_WS_URL || "ws://192.168.123.18:8000/ws";
 function App() {
   const [socket, setSocket] = useState(null);
   const [prompt, setPrompt] = useState("");
-  const [response, setResponse] = useState("");
+  const [response, setMessages] = useState([]);
 
   useEffect(() => {
     const ws = new WebSocket(WS_URL);
@@ -15,7 +15,10 @@ function App() {
     };
 
     ws.onmessage = (event) => {
-      setResponse(event.data);
+      setMessages((prevMessages) => [
+        ...prevMessages, 
+        event.data
+      ]);
     };
 
     setSocket(ws);
@@ -45,8 +48,30 @@ function App() {
         Send
       </button>
 
-      <h2>Robot Response:</h2>
-      <p>{response}</p>
+      <h2>Robot Status:</h2>
+
+    <div
+      style={{
+        backgroundColor: "#111",
+        color: "#eee",
+        padding: "15px",
+        borderRadius: "8px",
+        height: "200px",
+        overflowY: "auto",
+        fontFamily: "monospace",
+        marginBottom: "20px"
+      }}
+    >
+      {messages.length === 0 ? (
+        <div>Waiting for command...</div>
+      ) : (
+        messages.map((message, index) => (
+          <div key={index}>
+            {message}
+          </div>
+        ))
+      )}
+    </div>
 
       <img 
       src="http://192.168.123.18:8000/camera" 

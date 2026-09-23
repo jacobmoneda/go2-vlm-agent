@@ -32,6 +32,21 @@ async def camera_stream():
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
 
+async def send_status_messages(websocket):
+    """
+    Continuously sends backend status messages
+    to the frontend.
+    """
+
+    while True:
+
+        while not shared_state.status_queue.empty():
+            message = shared_state.status_queue.get()
+
+            await websocket.send_text(message)
+
+        await asyncio.sleep(0.05)
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
 
@@ -39,24 +54,36 @@ async def websocket_endpoint(websocket: WebSocket):
 
     print("Client connected.")
 
-    while True:
+    #Start sending backend status messages
+    status_task = asyncio.create_task(
+        send_status_messages(websocket)
+    )
 
-        # Receive prompt from frontend
-        prompt = await websocket.receive_text()
+    try:
+        while True:
 
-        print("Received prompt:", prompt)
+            # Receive prompt from frontend
+            prompt = await websocket.receive_text()
 
-        # Pre-process and validate
-        try:
-            prompt = preprocess_prompt(prompt)
-        except InvalidPromptError as e:
-            await websocket.send_text(f"Invalid prompt: {e}")
-            continue
+            print("Received prompt:", prompt)
 
-        # Update shared state
-        shared_state.user_prompt = prompt
+            # Pre-process and validate
+            try:
+                prompt = preprocess_prompt(prompt)
 
-        # Acknowledge
-        await websocket.send_text(
-            f"Prompt updated: {shared_state.latest_prompt}"
-        )
+            except InvalidPromptError as e:
+                await websocket.send_text(
+                    f"[Error] Invalid prompt: {e}"
+                )
+                continue
+
+            # Update shared state
+            shared_state.user_prompt = prompt
+
+            # Acknowledge
+            await websocket.send_text(
+                f"[Command] Prompt received: {prompt}"
+            )
+
+    finally:
+        status_task.cancel()

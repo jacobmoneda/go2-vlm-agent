@@ -56,3 +56,38 @@ def preprocess_prompt(raw: str) -> str:
     prompt = " ".join(prompt.split())
 
     return prompt
+
+def process_input(raw: str) -> dict:
+    """
+    Cleans, validates, and parses a user prompt into a structured task dict.
+    Returns {"action": str, "target": str or None}
+    """
+    # first clean and validate
+    prompt = preprocess_prompt(raw)
+    lower = prompt.lower()
+
+    # extract action
+    action = None
+    for valid_action in VALID_ACTIONS:
+        if valid_action in lower:
+            action = valid_action
+            break
+
+    # extract target — word(s) after the action
+    target = None
+    if action:
+        # find everything after the action keyword
+        after_action = lower.split(action, 1)[-1].strip()
+
+        # strip common filler words
+        filler = ["the", "a", "an", "me", "my", "this", "that"]
+        words = [w for w in after_action.split() if w not in filler]
+
+        if words:
+            target = words[0]  # take first meaningful word as target
+
+    return {
+        "action": action,
+        "target": target,
+        "raw": prompt
+    }

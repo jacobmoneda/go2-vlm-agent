@@ -11,6 +11,7 @@ class SharedState:
         self.user_prompt = ""
         self.latest_result = None
         self.camera = None
+        self.parsed_command = ""
 
     @property
     def latest_prompt(self):

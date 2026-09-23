@@ -2,7 +2,7 @@ from ultralytics import YOLO
 from PIL import Image
 import numpy as np
 
-MODEL_PATH = "/home/unitree/go2-vlm-agent/models/yolo11n.pt"
+MODEL_PATH = "/home/unitree/models/yolo11n.pt"
 
 FRAME_WIDTH = 1920
 FRAME_HEIGHT = 1080
@@ -14,6 +14,7 @@ CLOSE_THRESHOLD = 600          # bounding box height in pixels — stop if targe
 
 print("[YOLO] Loading model...")
 model = YOLO(MODEL_PATH)
+model.to("cpu")
 print("[YOLO] Model loaded successfully.")
 
 
@@ -23,7 +24,7 @@ def get_detections(pil_image: Image.Image) -> list:
     Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
     """
     frame = np.array(pil_image)
-    results = model(frame, verbose=False)
+    results = model(frame, verbose=False, device="cpu")
 
     detections = []
     for box in results[0].boxes:

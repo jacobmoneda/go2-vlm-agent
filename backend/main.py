@@ -1,4 +1,5 @@
 # backend/main.py
+# only runs yolo-based perception loop and decision logic, no llm, no vlm
 import threading
 import time
 import uvicorn

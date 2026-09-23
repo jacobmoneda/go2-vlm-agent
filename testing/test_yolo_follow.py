@@ -15,8 +15,14 @@ from backend.robotControl.robot_control import execute_action
 
 FRAME_WIDTH = 1920
 CENTER_X = FRAME_WIDTH // 2  # 960
+
 DEAD_ZONE = 60
-CLOSE_THRESHOLD = 600
+
+TARGET_HEIGHT_1M = 800 # Height of bounding box at 1m away
+DISTANCE_TOLERANCE = 60
+
+FAR_THRESHOLD = TARGET_HEIGHT_1M - DISTANCE_TOLERANCE    
+CLOSE_THRESHOLD = TARGET_HEIGHT_1M + DISTANCE_TOLERANCE 
 TARGET_CLASS = "person" # change to test with other objects
 
 print("[Test] Starting YOLO follow test...")
@@ -61,16 +67,24 @@ try:
         if offset_x > DEAD_ZONE:
             print("[Action] Turning RIGHT")
             execute_action("turn_right")
+
         elif offset_x < -DEAD_ZONE:
             print("[Action] Turning LEFT")
             execute_action("turn_left")
-        # priority 2 — move forward if centred and far enough
-        elif box_height < CLOSE_THRESHOLD:
-            print("[Action] Moving FORWARD")
+
+        # priority 2 — target too far, move forward
+        elif box_height < FAR_THRESHOLD:
+            print("[Action] Target too far — moving FORWARD")
             execute_action("move_forward")
-        # priority 3 — stop if centred and close
+
+        # priority 3 — target too close, move backward
+        elif box_height > CLOSE_THRESHOLD:
+            print("[Action] Target too close — moving BACKWARD")
+            execute_action("move_backward")
+
+        # priority 4 — target approximately 1 m away
         else:
-            print("[Action] Close enough — stopping")
+            print("[Action] Target ~1m away — stopping")
             execute_action("stop")
  
         time.sleep(0.1)  # small delay between commands

@@ -9,6 +9,7 @@ Vision-Based Autonomous Behaviour Learning for the Unitree Go2
 
 ```bash
 cd ~/go2-vlm-agent
+ollama serve &
 python3 -m backend.main
 ```
 

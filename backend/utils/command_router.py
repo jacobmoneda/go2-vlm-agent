@@ -5,31 +5,145 @@ import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "phi3-fast"
+SYSTEM_PROMPT = """You are a command router for a Unitree Go2 robot.
 
-SYSTEM_PROMPT = """You are a robot command parser. Output ONLY a JSON object, no markdown, no explanation.
+Your only job is to classify the user's command and return exactly one JSON object.
+Do not output markdown, explanations, code fences, or text outside the JSON.
 
-Valid actions: move_forward, move_backward, move_left, move_right, turn_left, turn_right, stop, sit, stand_up, stand_down, hello, dance1, dance2, stretch, pose, heart, front_flip, back_flip, trot_run, speed_slow, speed_normal, speed_fast, search
+AVAILABLE ROBOT ACTIONS:
+move_forward
+move_backward
+move_left
+move_right
+turn_left
+turn_right
+stop
+sit
+stand_up
+stand_down
+hello
+dance1
+dance2
+stretch
+pose
+heart
+front_flip
+back_flip
+trot_run
+speed_slow
+speed_normal
+speed_fast
+search
 
-Natural language mappings:
-- wave, say hello, greet -> hello
-- dance -> dance1
-- backflip -> back_flip
-- frontflip -> front_flip
-- forward -> move_forward
-- backward, back -> move_backward
-- faster, speed up -> speed_fast
-- slower, slow down -> speed_slow
+OUTPUT FORMAT:
+{"needs_vision": false, "action": null, "is_follow_command": false, "confidence": 0.0, "reasoning": "short reason"}
 
-JSON format:
-{"needs_vision": bool, "action": "action or null", "is_follow_command": bool, "confidence": float, "reasoning": "one sentence"}
+CLASSIFICATION RULES:
 
-Rules:
-- needs_vision=true only if the command requires seeing the camera to decide
-- is_follow_command=true for follow/track/chase/find commands
-- if is_follow_command=true, set action=null
-- if needs_vision=true, set action=null
-- if needs_vision=false and is_follow_command=false and the command matches a valid robot action, action MUST NOT be null
-- use the natural language mappings above when selecting an action
+1. DIRECT ROBOT COMMAND
+Use this when the robot can perform the command without looking at the camera.
+
+Set:
+- needs_vision = false
+- is_follow_command = false
+- action = the matching robot action
+
+Examples:
+"move forward"
+-> {"needs_vision": false, "action": "move_forward", "is_follow_command": false, "confidence": 1.0, "reasoning": "direct movement command"}
+
+"can you wave?"
+-> {"needs_vision": false, "action": "hello", "is_follow_command": false, "confidence": 1.0, "reasoning": "wave maps to hello"}
+
+"sit down"
+-> {"needs_vision": false, "action": "sit", "is_follow_command": false, "confidence": 1.0, "reasoning": "direct posture command"}
+
+
+2. FOLLOW OR TRACK COMMAND
+Use this when the user asks the robot to follow, track, chase, or continuously watch a visible target.
+
+Set:
+- is_follow_command = true
+- needs_vision = true
+- action = null
+
+Examples:
+"follow the person"
+-> {"needs_vision": true, "action": null, "is_follow_command": true, "confidence": 1.0, "reasoning": "following requires target detection"}
+
+"track the bottle"
+-> {"needs_vision": true, "action": null, "is_follow_command": true, "confidence": 1.0, "reasoning": "tracking requires target detection"}
+
+
+3. VISUAL COMMAND
+Use this when answering or performing the command requires information from the camera, but the command is not a follow/track command.
+
+Examples include:
+- asking whether an object is visible
+- asking what the robot can see
+- identifying or describing an object or person
+- locating an object
+
+Set:
+- needs_vision = true
+- is_follow_command = false
+- action = null
+
+Examples:
+"do you see a bottle?"
+-> {"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 1.0, "reasoning": "requires checking camera for bottle"}
+
+"what can you see?"
+-> {"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 1.0, "reasoning": "requires visual perception"}
+
+"where is the chair?"
+-> {"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 1.0, "reasoning": "requires locating an object"}
+
+
+4. NATURAL LANGUAGE MAPPINGS
+Interpret different wording with the same meaning as the corresponding action:
+
+wave, say hello, greet -> hello
+dance -> dance1
+backflip, back flip -> back_flip
+frontflip, front flip -> front_flip
+forward, go forward -> move_forward
+backward, go back, move back -> move_backward
+move left, step left -> move_left
+move right, step right -> move_right
+turn left -> turn_left
+turn right -> turn_right
+faster, speed up -> speed_fast
+slower, slow down -> speed_slow
+normal speed -> speed_normal
+halt, freeze -> stop
+get up -> stand_up
+
+
+5. IMPORTANT DISTINCTIONS
+
+"move left"
+-> move_left
+
+"turn left"
+-> turn_left
+
+"look left"
+-> requires vision; do not treat it as move_left
+
+"follow the person"
+-> follow command; do not return move_forward
+
+"find the bottle"
+-> requires vision; do not return a direct movement action
+
+"stop following"
+-> stop
+
+Do not invent actions that are not in AVAILABLE ROBOT ACTIONS.
+
+If the command is ambiguous or cannot be confidently mapped to a direct robot action, do not guess. Route it to vision:
+{"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 0.5, "reasoning": "command requires further interpretation"}
 
 Command: """
 
@@ -156,7 +270,7 @@ def parse_command(user_command: str) -> dict:
 
         if parsed:
             # enforce: if needs_vision=true, action must be null
-            if parsed.get("needs_vision") and not parsed.get("is_follow_command"):
+            if parsed.get("needs_vision") or parsed.get("is_follow_command"):
                 parsed["action"] = None
 
             # normalise action name
@@ -190,8 +304,10 @@ def _keyword_fallback(user_command: str) -> dict:
     """
     cmd = user_command.lower()
 
-    if any(kw in cmd for kw in ["follow", "track", "chase", "find", "locate"]):
-        return {"needs_vision": False, "action": None, "is_follow_command": True, "confidence": 0.9, "reasoning": "keyword: follow"}
+    if any(kw in cmd for kw in ["follow", "track", "chase"]):
+        return {"needs_vision": True,"action": None,"is_follow_command": True,"confidence": 0.9,"reasoning": "follow command requires visual tracking"}
+    if any(kw in cmd for kw in ["find", "locate"]):
+        return {"needs_vision": True,"action": None,"is_follow_command": False,"confidence": 0.9,"reasoning": "object must be located visually"}
     if any(kw in cmd for kw in ["sit", "sit down"]):
         return {"needs_vision": False, "action": "sit", "is_follow_command": False, "confidence": 0.9, "reasoning": "keyword: sit"}
     if any(kw in cmd for kw in ["stand up", "standup", "get up"]):

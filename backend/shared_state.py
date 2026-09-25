@@ -14,17 +14,19 @@ class SharedState:
         self.latest_result = None
         self.camera = None
         self.status_queue = queue.Queue()
-    @property
+   
     
     def send_status(self, message):
-    print(message)
-    self.status_queue.put(message)
+        print(message)
+        self.status_queue.put(message)
 
+    @property
     def latest_prompt(self):
         if self.user_prompt:
             return f"{self.base_prompt} Instruction: {self.user_prompt}"
         return self.base_prompt
 
 shared_state = SharedState()
+
 
 

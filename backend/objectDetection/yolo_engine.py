@@ -24,7 +24,9 @@ def get_detections(pil_image: Image.Image) -> list:
     Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
     """
     frame = np.array(pil_image)
-    results = model(frame, verbose=False, device="cpu")
+    results = model(frame, verbose=True, device="cpu")
+    print(f"[YOLO] Raw result boxes: {len(results[0].boxes)}")
+    print(f"[YOLO] Raw result names: {results[0].names}")
 
     detections = []
     for box in results[0].boxes:

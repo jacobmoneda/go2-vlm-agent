@@ -17,7 +17,7 @@ The system uses:
 
 ## System Overview
 
-**_to be done_**
+![Architecture Diagram](images/diagram.png)
 
 The command router determines whether a user request can be executed directly or requires visual perception.
 

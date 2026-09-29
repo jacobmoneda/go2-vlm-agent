@@ -1,0 +1,55 @@
+=== OS ===
+NAME="Ubuntu"
+VERSION="20.04.5 LTS (Focal Fossa)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 20.04.5 LTS"
+VERSION_ID="20.04"
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+VERSION_CODENAME=focal
+UBUNTU_CODENAME=focal
+
+=== Kernel ===
+Linux ubuntu 5.10.104-tegra #1 SMP PREEMPT Sun Mar 19 07:55:28 PDT 2023 aarch64 aarch64 aarch64 GNU/Linux
+
+=== Jetson / L4T ===
+# R35 (release), REVISION: 3.1, GCID: 32827747, BOARD: t186ref, EABI: aarch64, DATE: Sun Mar 19 15:19:21 UTC 2023
+
+=== Python ===
+Python 3.8.10
+pip 25.0.1 from /home/unitree/.local/lib/python3.8/site-packages/pip (python 3.8)
+
+=== Ollama ===
+Warning: could not connect to a running Ollama instance
+Warning: client version is 0.3.14
+
+=== CUDA ===
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2022 NVIDIA Corporation
+Built on Sun_Oct_23_22:16:07_PDT_2022
+Cuda compilation tools, release 11.4, V11.4.315
+Build cuda_11.4.r11.4/compiler.31964100_0
+
+=== PyTorch ===
+torch: 2.0.0a0+8aa34602.nv23.03
+cuda available: True
+torch cuda version: 11.4
+
+=== YOLO / Ultralytics ===
+ultralytics: 8.3.228
+
+=== Unitree SDK ===
+Name: unitree_sdk2py
+Version: 1.0.1
+Summary: Unitree robot sdk version 2 for python
+Home-page: 
+Author: UnitreeRobotics
+Author-email: unitree@unitree.com
+License: BSD-3-Clause
+Location: /home/unitree/unitree_sdk2_python
+Editable project location: /home/unitree/unitree_sdk2_python
+Requires: cyclonedds, numpy, opencv-python
+Required-by: 

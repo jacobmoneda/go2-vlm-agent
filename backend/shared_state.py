@@ -1,3 +1,5 @@
+import queue
+
 class SharedState:
     def __init__(self):
         self.base_prompt = (
@@ -11,7 +13,12 @@ class SharedState:
         self.user_prompt = ""
         self.latest_result = None
         self.camera = None
-        self.parsed_command = ""
+        self.status_queue = queue.Queue()
+   
+    
+    def send_status(self, message):
+        print(message)
+        self.status_queue.put(message)
 
     @property
     def latest_prompt(self):
@@ -20,5 +27,6 @@ class SharedState:
         return self.base_prompt
 
 shared_state = SharedState()
+
 
 

@@ -131,6 +131,7 @@ def perception_loop(camera: Go2Camera):
         # --- Path 2: Vision needed — run Phi (one shot) ---
         elif needs_vision and not is_follow:
             print("[Main] Running Phi-3.5 for vision-dependent command...")
+            shared_state.send_status("[Vision] Analysing camera...")
             t0 = time.time()
 
             frame_bytes = camera.get_frame_bytes()
@@ -141,6 +142,20 @@ def perception_loop(camera: Go2Camera):
 
             print(f"[Phi] {elapsed:.2f}s | {result}")
             shared_state.latest_result = {"engine": "phi", "result": result}
+
+            # Send Phi result to the frontend
+            if isinstance(result, str):
+                shared_state.send_status(f"[Vision] {result}")
+
+            elif isinstance(result, dict):
+                description = (
+                    result.get("image")
+                    or result.get("target_description")
+                    or result.get("reasoning")
+                )
+
+                if description:
+                    shared_state.send_status(f"[Vision] {description}")
 
             # parse phi output and execute
             if isinstance(result, dict):

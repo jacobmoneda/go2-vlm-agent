@@ -46,13 +46,8 @@ def preprocess_prompt(raw: str) -> str:
         if phrase in lower:
             raise InvalidPromptError("Prompt contains disallowed content.")
 
-    # 5. Check prompt contains a recognisable action
-    if not any(action in lower for action in VALID_ACTIONS):
-        raise InvalidPromptError(
-            f"Prompt must contain a valid action. Valid actions: {', '.join(VALID_ACTIONS)}."
-        )
 
-    # 6. Normalise — strip extra whitespace between words
+    # 5. Normalise — strip extra whitespace between words
     prompt = " ".join(prompt.split())
 
     return prompt

@@ -95,7 +95,11 @@ def perception_loop(camera: Go2Camera):
         confidence = parsed.get("confidence", 0.0)
 
         print(f"[Router] needs_vision={needs_vision} | is_follow={is_follow} | action={action} | confidence={confidence:.2f}")
-
+        
+        shared_state.send_status(
+            f"[Confidence] {confidence * 100:.0f}%"
+        )
+        
         # routing
         t_route = time.time()
 

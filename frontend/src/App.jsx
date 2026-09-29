@@ -28,6 +28,7 @@ function App() {
 
   const sendPrompt = () => {
     if (socket && prompt) {
+      setMessages([]);   // clear previous command/results
       socket.send(prompt);
     }
   };

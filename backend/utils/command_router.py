@@ -145,6 +145,9 @@ Do not invent actions that are not in AVAILABLE ROBOT ACTIONS.
 If the command is ambiguous or cannot be confidently mapped to a direct robot action, do not guess. Route it to vision:
 {"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 0.5, "reasoning": "command requires further interpretation"}
 
+Your only job is to classify the user's command and return exactly one JSON object.
+Do not output markdown, explanations, code fences, or text outside the JSON.
+
 Command: """
 
 # normalise action names that models commonly return incorrectly
@@ -162,6 +165,7 @@ ACTION_ALIASES = {
     "forward":    "move_forward",
     "backward":   "move_backward",
     "back":       "move_backward",
+    "sit_down": "sit",
 }
 
 VALID_ACTIONS = {
@@ -261,7 +265,7 @@ def parse_command(user_command: str) -> dict:
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=150)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=30)
         response.raise_for_status()
         raw = response.json().get("response", "")
         print(f"[Router] Raw output: {raw!r}")

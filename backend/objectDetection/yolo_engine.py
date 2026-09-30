@@ -1,8 +1,30 @@
+#/backend/objectDetection/yolo_engine.py
+
 from ultralytics import YOLO
 from PIL import Image
 import numpy as np
+import threading
 
 MODEL_PATH = "/home/unitree/models/yolo11n.pt"
+
+_model = None
+_model_lock = threading.Lock()
+
+def get_model():
+    global _model
+
+    if _model is None:
+        with _model_lock:
+            if _model is None:
+                print("[YOLO] Loading model...")
+
+                _model = YOLO(MODEL_PATH)
+                _model.to("cpu")
+
+                print("[YOLO] Model loaded successfully.")
+                print("[YOLO] Model ID:", id(_model))
+
+    return _model
 
 FRAME_WIDTH = 1920
 FRAME_HEIGHT = 1080
@@ -12,21 +34,26 @@ DEAD_ZONE = 60                # pixels either side of center before turning
 CLOSE_THRESHOLD = 600          # bounding box height in pixels — stop if target this close
 
 
-print("[YOLO] Loading model...")
-model = YOLO(MODEL_PATH)
-model.to("cpu")
-print("[YOLO] Model loaded successfully.")
 
 
+"""
 def get_detections(pil_image: Image.Image) -> list:
-    """
-    Run YOLO on a PIL image and return all detections as a list of dicts.
-    Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
-    """
+    
+    //Run YOLO on a PIL image and return all detections as a list of dicts.
+    //Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
+    
+
+    model = get_model()
+    print(
+        f"[YOLO] Inference thread: "
+        f"{threading.current_thread().name}"
+    )
+
     frame = np.array(pil_image)
     results = model(frame, verbose=True, device="cpu")
-    print(f"[YOLO] Raw result boxes: {len(results[0].boxes)}")
-    print(f"[YOLO] Raw result names: {results[0].names}")
+
+    print("[YOLO] Raw boxes:", len(results[0].boxes))
+
 
     detections = []
     for box in results[0].boxes:
@@ -44,6 +71,105 @@ def get_detections(pil_image: Image.Image) -> list:
             "box_center_y": box_center_y,
             "box_height": box_height,
             "xyxy": [x1, y1, x2, y2]
+        })
+
+    return detections
+
+"""
+
+def get_detections(pil_image: Image.Image) -> list:
+    import sys
+    #import ultralytics
+
+    model = get_model()
+
+    print("\n========== YOLO DEBUG ==========")
+
+    frame = np.array(pil_image)
+
+    print(
+        f"[YOLO] frame shape={frame.shape} "
+        f"dtype={frame.dtype} "
+        f"min={frame.min()} "
+        f"max={frame.max()} "
+        f"mean={frame.mean():.1f}"
+    )
+
+    # ---------------------------------------
+    # TEST 1: current in-memory camera image
+    # ---------------------------------------
+    print("\n--- TEST 1: MEMORY FRAME ---")
+
+    memory_results = model(
+        frame,
+        verbose=True,
+        device="cpu",
+        conf=0.1,
+    )
+
+    print(
+        "[MEMORY] boxes:",
+        len(memory_results[0].boxes)
+    )
+
+    for box in memory_results[0].boxes:
+        cls = int(box.cls[0])
+        conf = float(box.conf[0])
+
+        print(
+            f"[MEMORY] {model.names[cls]}: "
+            f"{conf:.2f}"
+        )
+
+    # ---------------------------------------
+    # TEST 2: save SAME image and reload file
+    # ---------------------------------------
+    path = "/home/unitree/go2-vlm-agent/images/current_test.jpg"
+    pil_image.save(path)
+
+    print("\n--- TEST 2: SAME FRAME FROM FILE ---")
+
+    file_results = model(
+        path,
+        verbose=True,
+        device="cpu",
+        conf=0.1,
+    )
+
+    print(
+        "[FILE] boxes:",
+        len(file_results[0].boxes)
+    )
+
+    for box in file_results[0].boxes:
+        cls = int(box.cls[0])
+        conf = float(box.conf[0])
+
+        print(
+            f"[FILE] {model.names[cls]}: "
+            f"{conf:.2f}"
+        )
+
+    print("================================\n")
+
+    # Use memory result for normal program behaviour
+    results = memory_results
+
+    detections = []
+
+    for box in results[0].boxes:
+        cls_id = int(box.cls[0])
+        confidence = float(box.conf[0])
+
+        x1, y1, x2, y2 = box.xyxy[0].tolist()
+
+        detections.append({
+            "label": model.names[cls_id],
+            "confidence": confidence,
+            "box_center_x": (x1 + x2) / 2,
+            "box_center_y": (y1 + y2) / 2,
+            "box_height": y2 - y1,
+            "xyxy": [x1, y1, x2, y2],
         })
 
     return detections

@@ -1,4 +1,4 @@
-# backend/main3.py
+# backend/main.py
 # pre-processing, routing, and 3-path execution (direct, phi, yolo-follow)
 import threading
 import io
@@ -11,7 +11,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 ChannelFactoryInitialize(0, "eth0")
 
 from backend.camera.go2_camera import Go2Camera
-from backend.vlm.phi_engine import run_phi_with_frame
+#from backend.vlm.phi_engine import run_phi_with_frame
 from backend.robotControl.robot_control import execute_action
 from backend.decision_logic import follow_target
 from backend.utils.input_processor import preprocess_prompt, InvalidPromptError
@@ -95,7 +95,11 @@ def perception_loop(camera: Go2Camera):
         confidence = parsed.get("confidence", 0.0)
 
         print(f"[Router] needs_vision={needs_vision} | is_follow={is_follow} | action={action} | confidence={confidence:.2f}")
-
+        
+        shared_state.send_status(
+            f"[Confidence] {confidence * 100:.0f}%"
+        )
+        
         # routing
         t_route = time.time()
 
@@ -127,10 +131,9 @@ def perception_loop(camera: Go2Camera):
             last_processed_prompt = raw_prompt
             t_execute = time.time()
             print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
-
         # --- Path 2: Vision needed — run Phi (one shot) ---
         elif needs_vision and not is_follow:
-            print("[Main] Running Phi-3.5 for vision-dependent command...")
+            """print("[Main] Running Phi-3.5 for vision-dependent command...")
             shared_state.send_status("[Vision] Analysing camera...")
             t0 = time.time()
 
@@ -170,8 +173,11 @@ def perception_loop(camera: Go2Camera):
 
             last_processed_prompt = raw_prompt
             t_execute = time.time()
-            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
-            
+            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s") """
+            print("[Main] Vision/VLM path disabled for YOLO isolation test")
+            execute_action("stop")
+            last_processed_prompt = raw_prompt
+            continue
         # --- Path 3: Follow command — run YOLO continuously ---
         elif is_follow:
             # unload Ollama model to free CPU for YOLO
@@ -188,6 +194,9 @@ def perception_loop(camera: Go2Camera):
             # extract target from prompt — default to person
             target_class = parsed.get("target", "person") or "person"
 
+            saved_debug_frame = False
+
+
             while True:
                 # check if user has changed the prompt
                 current_prompt = shared_state.user_prompt
@@ -203,7 +212,33 @@ def perception_loop(camera: Go2Camera):
                 t0 = time.time()
 
                 frame_bytes = camera.get_frame_bytes()
+                if not frame_bytes:
+                    print("[Debug] No frame received")
+                    execute_action("stop")
+                    time.sleep(0.1)
+                    continue
+
+                # -----------------------------------------
+                # DEBUG: SAVE EXACT RAW CAMERA JPEG ONCE
+                # -----------------------------------------
+                if not saved_debug_frame:
+                    debug_path = "/home/unitree/go2-vlm-agent/images/live_yolo_frame.jpg"
+
+                    with open(debug_path, "wb") as f:
+                        f.write(frame_bytes)
+
+                    print(
+                        f"[Debug] Saved raw camera frame: {debug_path} "
+                        f"| bytes={len(frame_bytes)}"
+                    )
+
+                    saved_debug_frame = True
+                # -----------------------------------------
+
                 pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
+
+                pil_image.save("/home/unitree/go2-vlm-agent/images/follow_frame.jpg")
+                print(f"[Debug] Frame size: {pil_image.size} | bytes: {len(frame_bytes)}")
 
                 follow_target(target_class, pil_image)
 

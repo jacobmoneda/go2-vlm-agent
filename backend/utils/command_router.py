@@ -5,150 +5,55 @@ import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "phi3-fast"
-SYSTEM_PROMPT = """You are a command router for a Unitree Go2 robot.
+SYSTEM_PROMPT = """You route natural-language commands for a Unitree Go2 robot.
 
-Your only job is to classify the user's command and return exactly one JSON object.
-Do not output markdown, explanations, code fences, or text outside the JSON.
+Return ONLY one JSON object:
+{"needs_vision": false, "action": null, "is_follow_command": false, "confidence": 0.0}
 
-AVAILABLE ROBOT ACTIONS:
-move_forward
-move_backward
-move_left
-move_right
-turn_left
-turn_right
-stop
-sit
-stand_up
-stand_down
-hello
-dance1
-dance2
-stretch
-pose
-heart
-front_flip
-back_flip
-trot_run
-speed_slow
-speed_normal
-speed_fast
-search
+DIRECT:
+If the command can be performed without the camera:
+needs_vision=false, is_follow_command=false, action=<robot action>.
 
-OUTPUT FORMAT:
-{"needs_vision": false, "action": null, "is_follow_command": false, "confidence": 0.0, "reasoning": "short reason"}
+Valid actions:
+move_forward, move_backward, move_left, move_right,
+turn_left, turn_right, stop, sit, stand_up, stand_down,
+hello, dance1, dance2, stretch, pose, heart,
+front_flip, back_flip, trot_run,
+speed_slow, speed_normal, speed_fast
 
-CLASSIFICATION RULES:
-
-1. DIRECT ROBOT COMMAND
-Use this when the robot can perform the command without looking at the camera.
-
-Set:
-- needs_vision = false
-- is_follow_command = false
-- action = the matching robot action
-
-Examples:
-"move forward"
--> {"needs_vision": false, "action": "move_forward", "is_follow_command": false, "confidence": 1.0, "reasoning": "direct movement command"}
-
-"can you wave?"
--> {"needs_vision": false, "action": "hello", "is_follow_command": false, "confidence": 1.0, "reasoning": "wave maps to hello"}
-
-"sit down"
--> {"needs_vision": false, "action": "sit", "is_follow_command": false, "confidence": 1.0, "reasoning": "direct posture command"}
-
-
-2. FOLLOW OR TRACK COMMAND
-Use this when the user asks the robot to follow, track, chase, or continuously watch a visible target.
-
-Set:
-- is_follow_command = true
-- needs_vision = true
-- action = null
-
-Examples:
-"follow the person"
--> {"needs_vision": true, "action": null, "is_follow_command": true, "confidence": 1.0, "reasoning": "following requires target detection"}
-
-"track the bottle"
--> {"needs_vision": true, "action": null, "is_follow_command": true, "confidence": 1.0, "reasoning": "tracking requires target detection"}
-
-
-3. VISUAL COMMAND
-Use this when answering or performing the command requires information from the camera, but the command is not a follow/track command.
-
-Examples include:
-- asking whether an object is visible
-- asking what the robot can see
-- identifying or describing an object or person
-- locating an object
-
-Set:
-- needs_vision = true
-- is_follow_command = false
-- action = null
-
-Examples:
-"do you see a bottle?"
--> {"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 1.0, "reasoning": "requires checking camera for bottle"}
-
-"what can you see?"
--> {"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 1.0, "reasoning": "requires visual perception"}
-
-"where is the chair?"
--> {"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 1.0, "reasoning": "requires locating an object"}
-
-
-4. NATURAL LANGUAGE MAPPINGS
-Interpret different wording with the same meaning as the corresponding action:
-
-wave, say hello, greet -> hello
+Interpret natural language by meaning. Examples:
+wave/greet/say hello -> hello
 dance -> dance1
-backflip, back flip -> back_flip
-frontflip, front flip -> front_flip
-forward, go forward -> move_forward
-backward, go back, move back -> move_backward
-move left, step left -> move_left
-move right, step right -> move_right
-turn left -> turn_left
-turn right -> turn_right
-faster, speed up -> speed_fast
-slower, slow down -> speed_slow
+go forward/come forward -> move_forward
+go back -> move_backward
+step left/right -> move_left/move_right
+turn left/right -> turn_left/turn_right
+speed up/faster -> speed_fast
+slow down/slower -> speed_slow
 normal speed -> speed_normal
-halt, freeze -> stop
+halt/freeze -> stop
 get up -> stand_up
 
+FOLLOW:
+If asked to continuously follow, track, or chase a target:
+needs_vision=true, is_follow_command=true, action=null.
 
-5. IMPORTANT DISTINCTIONS
+VISION:
+If the answer requires seeing the camera, such as identifying,
+describing, finding, locating, or checking whether something is visible:
+needs_vision=true, is_follow_command=false, action=null.
 
-"move left"
--> move_left
+Important:
+"move left" = move_left
+"turn left" = turn_left
+"find the bottle" = vision
+"follow the person" = follow
+"stop following" = stop
 
-"turn left"
--> turn_left
-
-"look left"
--> requires vision; do not treat it as move_left
-
-"follow the person"
--> follow command; do not return move_forward
-
-"find the bottle"
--> requires vision; do not return a direct movement action
-
-"stop following"
--> stop
-
-Do not invent actions that are not in AVAILABLE ROBOT ACTIONS.
-
-If the command is ambiguous or cannot be confidently mapped to a direct robot action, do not guess. Route it to vision:
-{"needs_vision": true, "action": null, "is_follow_command": false, "confidence": 0.5, "reasoning": "command requires further interpretation"}
-
-Your only job is to classify the user's command and return exactly one JSON object.
-Do not output markdown, explanations, code fences, or text outside the JSON.
+If uncertain, use vision. Never invent an action.
 
 Command: """
+
 
 # normalise action names that models commonly return incorrectly
 ACTION_ALIASES = {
@@ -253,19 +158,21 @@ def parse_command(user_command: str) -> dict:
         "model": OLLAMA_MODEL,
         "prompt": SYSTEM_PROMPT + user_command,
         "stream": False,
+        "keep_alive": -1,
         "options": {
             "temperature": 0.0,
-            "num_predict": 500,
-            "num_ctx": 512,
+            "num_predict": 80,
+            "num_ctx": 256,
             "stop": [
                 "\n\nCommand:",
-                "\nCommand:"
+                "\nCommand:",
+                "}\n"
             ]
         }
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=30)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=50)
         response.raise_for_status()
         raw = response.json().get("response", "")
         print(f"[Router] Raw output: {raw!r}")

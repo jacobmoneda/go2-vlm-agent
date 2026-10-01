@@ -36,11 +36,11 @@ CLOSE_THRESHOLD = 600          # bounding box height in pixels — stop if targe
 
 
 
-"""
+
 def get_detections(pil_image: Image.Image) -> list:
     
-    //Run YOLO on a PIL image and return all detections as a list of dicts.
-    //Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
+    ##Run YOLO on a PIL image and return all detections as a list of dicts.
+    ##Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
     
 
     model = get_model()
@@ -174,6 +174,7 @@ def get_detections(pil_image: Image.Image) -> list:
 
     return detections
 
+"""
 
 def get_follow_command(pil_image: Image.Image, target_class: str = "person") -> dict:
     """

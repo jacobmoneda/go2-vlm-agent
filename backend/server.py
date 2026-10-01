@@ -6,6 +6,7 @@ import asyncio
 
 from backend.shared_state import shared_state
 from backend.utils.input_processor import preprocess_prompt, InvalidPromptError
+from backend.robotControl.robot_control import execute_action
 
 app = FastAPI()
 
@@ -61,26 +62,37 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-
-            # Receive prompt from frontend
             prompt = await websocket.receive_text()
-
             print("Received prompt:", prompt)
 
-            # Pre-process and validate
+            # Emergency STOP button
+            # Bypasses preprocessing, LLM routing, vision and YOLO
+            if prompt == "__EMERGENCY_STOP__":
+                print("[Emergency Stop] STOP requested")
+
+                # Stop robot immediately
+                execute_action("stop")
+
+                # Change the current prompt so an active follow loop exits
+                shared_state.user_prompt = "__EMERGENCY_STOP__"
+
+                # Tell frontend that robot has stopped
+                await websocket.send_text(
+                    "[EMERGENCY STOP] Robot stopped"
+                )
+
+                continue
+
             try:
                 prompt = preprocess_prompt(prompt)
-
             except InvalidPromptError as e:
                 await websocket.send_text(
                     f"[Error] Invalid prompt: {e}"
                 )
                 continue
 
-            # Update shared state
             shared_state.user_prompt = prompt
 
-            # Acknowledge
             await websocket.send_text(
                 f"[Command] Prompt received: {prompt}"
             )

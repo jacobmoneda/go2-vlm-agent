@@ -84,23 +84,23 @@ def follow_target(target_class, camera):
 
     # priority 1 — turn to centre target first
     if offset_x > DEAD_ZONE:
-        print("[Decision] Turning RIGHT")
+        send_status("[Follow Decision] Turning RIGHT")
         execute_action("turn_right")
 
     elif offset_x < -DEAD_ZONE:
-        print("[Decision] Turning LEFT")
+        send_status("[Follow Decision] Turning LEFT")
         execute_action("turn_left")
     # priority 2 — target too far, move forward
     elif box_height < FAR_THRESHOLD:
-        print("[Decision] Target too far — moving FORWARD")
+        send_status("[Follow Decision] Target too far — moving FORWARD")
         execute_action("move_forward")
     # priority 3 — target too close, move backward
     elif box_height > CLOSE_THRESHOLD:
-        print("[Decision] Target too close — moving BACKWARD")
+        send_status("[Follow Decision] Target too close — moving BACKWARD")
         execute_action("move_backward")
     # priority 4 — target approximately 1m away
     else:
-        print("[Decision] Target ~1m away — stopping")
+        send_status("[Follow Decision] Target ~1m away — stopping")
         execute_action("stop")
 
 

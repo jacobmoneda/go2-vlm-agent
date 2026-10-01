@@ -6,6 +6,7 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState([]);
+  const [followDecision, setFollowDecision] = useState("");
 
   useEffect(() => {
     const ws = new WebSocket(WS_URL);
@@ -15,11 +16,17 @@ function App() {
     };
 
     ws.onmessage = (event) => {
-      setMessages((prevMessages) => [
-        ...prevMessages, 
-        event.data
-      ]);
-    };
+      const message = event.data;
+
+      if (message.startsWith("[Follow Decision]")) {
+          setFollowDecision(message);
+      } else {
+          setMessages((prevMessages) => [
+              ...prevMessages,
+              message
+          ]);
+      }
+  };
 
     setSocket(ws);
 
@@ -29,7 +36,15 @@ function App() {
   const sendPrompt = () => {
     if (socket && prompt) {
       setMessages([]);   // clear previous command/results
+      setFollowDecision(""); 
       socket.send(prompt);
+    }
+  };
+
+  const emergencyStop = () => {
+    if (socket) {
+      socket.send("__EMERGENCY_STOP__");
+      setFollowDecision("");
     }
   };
 
@@ -49,6 +64,24 @@ function App() {
         Send
       </button>
 
+      <button
+        onClick={emergencyStop}
+        style={{
+          backgroundColor: "red",
+          color: "white",
+          fontWeight: "bold",
+          fontSize: "16px",
+          padding: "8px 20px",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+          marginLeft: "10px"
+        }}
+      >
+        STOP
+      </button>
+
+
       <h2>Robot Status:</h2>
 
     <div
@@ -63,14 +96,22 @@ function App() {
         marginBottom: "20px"
       }}
     >
-      {messages.length === 0 ? (
+      {messages.length === 0 && !followDecision ? (
         <div>Waiting for command...</div>
       ) : (
-        messages.map((message, index) => (
-          <div key={index}>
-            {message}
-          </div>
-        ))
+        <>
+          {messages.map((message, index) => (
+            <div key={index}>
+              {message}
+            </div>
+          ))}
+
+          {followDecision && (
+            <div>
+              {followDecision}
+            </div>
+          )}
+        </>
       )}
     </div>
 

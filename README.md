@@ -61,11 +61,7 @@ For initial setup instructions, see:
 Open an SSH terminal to the robot and start Ollama in CPU mode:
 
 ```bash
-OLLAMA_LLM_LIBRARY=cpu \
-OLLAMA_NUM_PARALLEL=1 \
-OLLAMA_MAX_LOADED_MODELS=1 \
-OLLAMA_KEEP_ALIVE=-1 \
-ollama serve
+CUDA_VISIBLE_DEVICES="" OLLAMA_NUM_PARALLEL=1 OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_KEEP_ALIVE=-1 OLLAMA_NUM_THREAD=2 ollama serve
 ```
 
 Keep this terminal running.

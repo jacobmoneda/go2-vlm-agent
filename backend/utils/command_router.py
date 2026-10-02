@@ -8,7 +8,7 @@ OLLAMA_MODEL = "phi3-fast"
 SYSTEM_PROMPT = """You route natural-language commands for a Unitree Go2 robot.
 
 Return ONLY one JSON object:
-{"needs_vision": false, "action": null, "is_follow_command": false, "confidence": 0.0}
+{"needs_vision": false, "action": null, "is_follow_command": false, "target": null, "confidence": 0.0}
 
 DIRECT:
 If the command can be performed without the camera:
@@ -73,6 +73,47 @@ ACTION_ALIASES = {
     "sit_down": "sit",
 }
 
+TARGET_ALIASES = {
+    # people
+    "person": "person",
+    "people": "person",
+    "human": "person",
+    "man": "person",
+    "woman": "person",
+    "guy": "person",
+
+    # objects
+    "bottle": "bottle",
+    "bottles": "bottle",
+
+    "cup": "cup",
+    "cups": "cup",
+    "mug": "cup",
+
+    "chair": "chair",
+    "chairs": "chair",
+    "seat": "chair",
+
+    "laptop": "laptop",
+    "computer": "laptop",
+
+    "backpack": "backpack",
+    "rucksack": "backpack",
+
+    "phone": "cell phone",
+    "cellphone": "cell phone",
+    "cell phone": "cell phone",
+
+    "book": "book",
+    "books": "book",
+
+    "dog": "dog",
+    "cat": "cat",
+
+    "tv": "tv",
+    "television": "tv",
+}
+
 VALID_ACTIONS = {
     "move_forward", "move_backward", "move_left", "move_right",
     "turn_left", "turn_right", "stop", "sit", "stand_up",
@@ -82,6 +123,19 @@ VALID_ACTIONS = {
     "classic_walk_on"
 }
 
+def extract_target(user_command: str):
+    """
+    Extract a supported YOLO/COCO target class from a user command.
+    Returns None if no known target is mentioned.
+    """
+    cmd = user_command.lower().strip()
+
+    # longest aliases first, e.g. "cell phone" before "phone"
+    for phrase in sorted(TARGET_ALIASES, key=len, reverse=True):
+        if re.search(rf"\b{re.escape(phrase)}\b", cmd):
+            return TARGET_ALIASES[phrase]
+
+    return None
 
 def strip_markdown(raw: str) -> str:
     """Remove markdown code fences if present."""
@@ -188,6 +242,9 @@ def parse_command(user_command: str) -> dict:
         parsed = extract_json(raw)
 
         if parsed:
+            detected_target = extract_target(user_command)
+            if detected_target:
+                parsed["target"] = detected_target
             if parsed.get("needs_vision") or parsed.get("is_follow_command"):
                 parsed["action"] = None
             parsed["action"] = normalise_action(parsed.get("action"))
@@ -216,11 +273,64 @@ def _keyword_fallback(user_command: str) -> dict:
     Simple keyword-based fallback if Ollama is unavailable or fails.
     """
     cmd = user_command.lower()
+    target = extract_target(user_command)
 
-    if any(kw in cmd for kw in ["follow", "track", "chase"]):
-        return {"needs_vision": True,"action": None,"is_follow_command": True,"confidence": 0.9,"reasoning": "follow command requires visual tracking"}
-    if any(kw in cmd for kw in ["find", "locate"]):
-        return {"needs_vision": True,"action": None,"is_follow_command": False,"confidence": 0.9,"reasoning": "object must be located visually"}
+    # Extract YOLO target from the user's command
+    target = extract_target(user_command)
+
+    # -------------------------------------------------
+    # FOLLOW / TRACK / MOVE TOWARDS AN OBJECT
+    # -------------------------------------------------
+    tracking_phrases = [
+        "follow",
+        "track",
+        "chase",
+        "move to",
+        "go to",
+        "go towards",
+        "go toward",
+        "walk to",
+        "approach",
+        "head to",
+    ]
+
+    if any(phrase in cmd for phrase in tracking_phrases):
+        if target:
+            return {
+                "needs_vision": True,
+                "action": None,
+                "is_follow_command": True,
+                "target": target,
+                "confidence": 0.95,
+                "reasoning": f"visual tracking/navigation target: {target}"
+            }
+
+        return {
+            "needs_vision": True,
+            "action": None,
+            "is_follow_command": True,
+            "target": None,
+            "confidence": 0.7,
+            "reasoning": "tracking command given but target was not recognised"
+        }
+
+    # -------------------------------------------------
+    # FIND / LOCATE / DETECT AN OBJECT
+    # -------------------------------------------------
+    if any(phrase in cmd for phrase in [
+        "find",
+        "locate",
+        "detect",
+        "look for"
+    ]):
+        return {
+            "needs_vision": True,
+            "action": None,
+            "is_follow_command": False,
+            "target": target,
+            "confidence": 0.9,
+            "reasoning": f"visual search target: {target}"
+        }
     if any(kw in cmd for kw in ["sit", "sit down"]):
         return {"needs_vision": False, "action": "sit", "is_follow_command": False, "confidence": 0.9, "reasoning": "keyword: sit"}
     if any(kw in cmd for kw in ["stand up", "standup", "get up"]):

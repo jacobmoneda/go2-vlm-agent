@@ -180,7 +180,7 @@ def parse_command(user_command: str) -> dict:
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=10)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=30)
         response.raise_for_status()
         raw = response.json().get("response", "")
         print(f"[Router] LLM output: {raw!r}")

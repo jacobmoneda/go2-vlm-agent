@@ -11,7 +11,7 @@ from backend.shared_state import shared_state
 FRAME_WIDTH = 1920
 CENTER_X = FRAME_WIDTH // 2  # 960
 DEAD_ZONE = 60
-CONFIDENCE_THRESHOLD = 0.5
+CONFIDENCE_THRESHOLD = 0.2
 
 last_status = None
 
@@ -31,7 +31,7 @@ FAR_THRESHOLD = TARGET_HEIGHT_1M - DISTANCE_TOLERANCE    # 740 — move forward
 CLOSE_THRESHOLD = TARGET_HEIGHT_1M + DISTANCE_TOLERANCE  # 860 — move backward
 
 
-def follow_target(target_class, camera):
+def follow_target(target_class: str, pil_image: Image.Image):
     """
     Follow / track a target using YOLO.
 
@@ -43,13 +43,12 @@ def follow_target(target_class, camera):
     - moves forward if centred and target is far
     - stops if centred and target is close
     """
-
-    if not camera.is_ready():
-        return
-
-    # get frame from camera
-    frame_bytes = camera.get_frame_bytes()
-    pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
+    #debugs
+    import numpy as np
+    frame_arr = np.array(pil_image)
+    print(f"[Debug] pixel mean={frame_arr.mean():.1f} | std={frame_arr.std():.1f}")
+    pil_image.save("/home/unitree/go2-vlm-agent/images/yolo_input_frame.jpg")
+    print(f"[Debug] Image size: {pil_image.size} | mode: {pil_image.mode}")
 
     # run YOLO
     detections = get_detections(pil_image)
@@ -60,6 +59,8 @@ def follow_target(target_class, camera):
         if d["label"] == target_class
         and d["confidence"] > CONFIDENCE_THRESHOLD
     ]
+
+    print(f"[YOLO] Detections: {[(d['label'], round(d['confidence'], 2)) for d in detections]}")
 
     # if target cannot be seen, stop
     if not targets:
@@ -104,25 +105,13 @@ def follow_target(target_class, camera):
         execute_action("stop")
 
 
-def detect_object(target_class, camera):
+def detect_object(target_class: str, pil_image: Image.Image) -> bool:    
     """
     Check whether YOLO can currently detect a requested object.
 
     Does NOT move the robot.
     Returns True if the object is detected and False if it is not.
     """
-
-    if not camera.is_ready():
-        print("[Detection] Camera is not ready.")
-        return False
-
-    frame_bytes = camera.get_frame_bytes()
-
-    if frame_bytes is None:
-        print("[Detection] No camera frame available.")
-        return False
-
-    pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
     detections = get_detections(pil_image)
 
@@ -137,6 +126,7 @@ def detect_object(target_class, camera):
         return False
 
     target = max(targets, key=lambda d: d["confidence"])
+    print(f"[Detection] {target_class} detected | confidence={target['confidence']:.2f}")
 
     send_status(
         f"[Detection] {target_class} detected "

@@ -1,8 +1,30 @@
+#/backend/objectDetection/yolo_engine.py
+
 from ultralytics import YOLO
 from PIL import Image
 import numpy as np
+import threading
 
 MODEL_PATH = "/home/unitree/models/yolo11n.pt"
+
+_model = None
+_model_lock = threading.Lock()
+
+def get_model():
+    global _model
+
+    if _model is None:
+        with _model_lock:
+            if _model is None:
+                print("[YOLO] Loading model...")
+
+                _model = YOLO(MODEL_PATH)
+                _model.to("cpu")
+
+                print("[YOLO] Model loaded successfully.")
+                print("[YOLO] Model ID:", id(_model))
+
+    return _model
 
 FRAME_WIDTH = 1920
 FRAME_HEIGHT = 1080
@@ -12,21 +34,26 @@ DEAD_ZONE = 60                # pixels either side of center before turning
 CLOSE_THRESHOLD = 600          # bounding box height in pixels — stop if target this close
 
 
-print("[YOLO] Loading model...")
-model = YOLO(MODEL_PATH)
-model.to("cpu")
-print("[YOLO] Model loaded successfully.")
+
 
 
 def get_detections(pil_image: Image.Image) -> list:
-    """
-    Run YOLO on a PIL image and return all detections as a list of dicts.
-    Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
-    """
+    
+    ##Run YOLO on a PIL image and return all detections as a list of dicts.
+    ##Each dict contains: label, confidence, box_center_x, box_center_y, box_height, xyxy
+    
+
+    model = get_model()
+    print(
+        f"[YOLO] Inference thread: "
+        f"{threading.current_thread().name}"
+    )
+
     frame = np.array(pil_image)
     results = model(frame, verbose=True, device="cpu")
-    print(f"[YOLO] Raw result boxes: {len(results[0].boxes)}")
-    print(f"[YOLO] Raw result names: {results[0].names}")
+
+    print("[YOLO] Raw boxes:", len(results[0].boxes))
+
 
     detections = []
     for box in results[0].boxes:
@@ -47,7 +74,6 @@ def get_detections(pil_image: Image.Image) -> list:
         })
 
     return detections
-
 
 def get_follow_command(pil_image: Image.Image, target_class: str = "person") -> dict:
     """

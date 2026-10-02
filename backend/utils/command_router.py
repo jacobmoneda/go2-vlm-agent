@@ -54,6 +54,7 @@ If uncertain, use vision. Never invent an action.
 
 Command: """
 
+
 # normalise action names that models commonly return incorrectly
 ACTION_ALIASES = {
     "dance":      "dance1",
@@ -69,6 +70,7 @@ ACTION_ALIASES = {
     "forward":    "move_forward",
     "backward":   "move_backward",
     "back":       "move_backward",
+    "sit_down": "sit",
 }
 
 VALID_ACTIONS = {
@@ -156,19 +158,21 @@ def parse_command(user_command: str) -> dict:
         "model": OLLAMA_MODEL,
         "prompt": SYSTEM_PROMPT + user_command,
         "stream": False,
+        "keep_alive": -1,
         "options": {
             "temperature": 0.0,
-            "num_predict": 500,
-            "num_ctx": 512,
+            "num_predict": 80,
+            "num_ctx": 256,
             "stop": [
                 "\n\nCommand:",
-                "\nCommand:"
+                "\nCommand:",
+                "}\n"
             ]
         }
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=150)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=50)
         response.raise_for_status()
         raw = response.json().get("response", "")
         print(f"[Router] Raw output: {raw!r}")

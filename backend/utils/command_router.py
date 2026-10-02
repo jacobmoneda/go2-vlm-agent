@@ -151,9 +151,21 @@ def normalise_action(action: str) -> str:
 
 def parse_command(user_command: str) -> dict:
     """
-    Send user command to local Ollama LLM and parse the JSON response.
-    Returns a dict with needs_vision, action, is_follow_command, confidence, reasoning.
+    Route command: keyword fallback first, LLM only for complex/unknown commands.
     """
+    cmd = user_command.lower()
+
+    # check if any keyword matches — instant, no LLM needed
+    keyword_result = _keyword_fallback(user_command)
+
+    # keyword fallback returns confidence 0.5 for unknown commands
+    # anything above 0.5 means a keyword matched — return immediately
+    if keyword_result.get("confidence", 0) > 0.5:
+        print(f"[Router] Keyword match: {keyword_result.get('action')} | {keyword_result.get('reasoning')}")
+        return keyword_result
+
+    # unknown command — run through LLM
+    print(f"[Router] No keyword match for '{user_command}' — routing to LLM")
     payload = {
         "model": OLLAMA_MODEL,
         "prompt": SYSTEM_PROMPT + user_command,
@@ -161,52 +173,42 @@ def parse_command(user_command: str) -> dict:
         "keep_alive": -1,
         "options": {
             "temperature": 0.0,
-            "num_predict": 80,
+            "num_predict": 40,
             "num_ctx": 256,
-            "stop": [
-                "\n\nCommand:",
-                "\nCommand:",
-                "}\n"
-            ]
+            "stop": ["\n\nCommand:", "\nCommand:", "}\n"]
         }
     }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload, timeout=50)
+        response = requests.post(OLLAMA_URL, json=payload, timeout=10)
         response.raise_for_status()
         raw = response.json().get("response", "")
-        print(f"[Router] Raw output: {raw!r}")
+        print(f"[Router] LLM output: {raw!r}")
 
         parsed = extract_json(raw)
 
         if parsed:
-            # enforce: if needs_vision=true, action must be null
             if parsed.get("needs_vision") or parsed.get("is_follow_command"):
                 parsed["action"] = None
-
-            # normalise action name
             parsed["action"] = normalise_action(parsed.get("action"))
-
-            # ensure confidence is a float
             if parsed.get("confidence") is None:
                 parsed["confidence"] = 0.9
-
             return parsed
 
-        print("[Router] JSON extraction failed — falling back to keyword routing")
-        return _keyword_fallback(user_command)
+        print("[Router] LLM JSON extraction failed — defaulting to vision")
+        return {"needs_vision": True, "action": None, "is_follow_command": False, "confidence": 0.5, "reasoning": "LLM parse failed"}
 
     except requests.exceptions.ConnectionError:
-        print("[Router] Ollama not running — falling back to keyword routing")
-        return _keyword_fallback(user_command)
+        print("[Router] Ollama not running — defaulting to vision")
+        return {"needs_vision": True, "action": None, "is_follow_command": False, "confidence": 0.5, "reasoning": "Ollama unavailable"}
 
     except requests.exceptions.Timeout:
-        print("[Router] Ollama timeout — falling back to keyword routing")
-        return _keyword_fallback(user_command)
+        print("[Router] LLM timeout — defaulting to vision")
+        return {"needs_vision": True, "action": None, "is_follow_command": False, "confidence": 0.5, "reasoning": "LLM timeout"}
 
     except Exception as e:
-        print(f"[Router] Error: {e} — falling back to keyword routing")
-        return _keyword_fallback(user_command)
+        print(f"[Router] Error: {e} — defaulting to vision")
+        return {"needs_vision": True, "action": None, "is_follow_command": False, "confidence": 0.5, "reasoning": "error"}
 
 
 def _keyword_fallback(user_command: str) -> dict:

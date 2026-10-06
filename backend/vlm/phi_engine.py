@@ -27,6 +27,37 @@ def _load_model():
         print("[Phi] Model loaded.")
     return _model, _processor
 
+
+def unload_phi():
+    global _model, _processor
+
+    if _model is not None:
+        print(
+            f"[Phi] GPU allocated before unload: "
+            f"{torch.cuda.memory_allocated() / 1024**3:.2f} GB"
+        )
+
+        print("[Phi] Unloading model...")
+
+        del _model
+        del _processor
+
+        _model = None
+        _processor = None
+
+        import gc
+        gc.collect()
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        print(
+            f"[Phi] GPU allocated after unload: "
+            f"{torch.cuda.memory_allocated() / 1024**3:.2f} GB"
+        )
+
+        print("[Phi] Model unloaded.")
+
 def run_phi_with_frame(pil_image: Image.Image, prompt: str) -> str:
     model, processor = _load_model()
     """

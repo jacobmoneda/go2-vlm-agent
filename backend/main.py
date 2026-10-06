@@ -3,6 +3,7 @@
 import threading
 import io
 import time
+from backend.vlm.phi_engine import unload_phi
 import uvicorn
 from PIL import Image
 import requests
@@ -11,7 +12,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 ChannelFactoryInitialize(0, "eth0")
 
 from backend.camera.go2_camera import Go2Camera
-#from backend.vlm.phi_engine import run_phi_with_frame
+#from backend.vlm.phi_engine import run_phi_with_frame, unload_phi
 from backend.robotControl.robot_control import execute_action
 from backend.decision_logic import follow_target
 from backend.utils.input_processor import preprocess_prompt, InvalidPromptError
@@ -180,7 +181,9 @@ def perception_loop(camera: Go2Camera):
             continue
         # --- Path 3: Follow command — run YOLO continuously ---
         elif is_follow:
-            # unload Ollama model to free CPU for YOLO
+
+            unload_phi()  # unload Phi to free GPU for YOLO
+            # unload Ollama model to free CPU for YOLO 
             try:
                 requests.post("http://localhost:11434/api/generate", json={
                     "model": "phi3-fast",

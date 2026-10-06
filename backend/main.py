@@ -3,7 +3,6 @@
 import threading
 import io
 import time
-from backend.vlm.phi_engine import unload_phi
 import uvicorn
 from PIL import Image
 import requests

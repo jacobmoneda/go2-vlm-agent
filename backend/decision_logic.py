@@ -4,7 +4,7 @@ import io
 import time
 from PIL import Image
 import time
-from backend.objectDetection.yolo_engine import get_detections
+from backend.objectDetection.yolo_engine import get_detections, get_tracked_detections
 from backend.robotControl.robot_control import execute_action
 from backend.shared_state import shared_state 
 
@@ -14,6 +14,28 @@ DEAD_ZONE = 60
 CONFIDENCE_THRESHOLD = 0.2
 
 last_status = None
+MAX_LOST_FRAMES = 10
+locked_target_id = None
+locked_target_class = None
+lost_target_frames = 0
+
+
+def reset_target_lock():
+    """Start a fresh selection when entering a new follow/navigation command."""
+    global locked_target_id, locked_target_class, lost_target_frames
+    if locked_target_id is not None:
+        print(f"[Target] Clearing target lock ID={locked_target_id}")
+    locked_target_id = None
+    locked_target_class = None
+    lost_target_frames = 0
+
+
+def lock_target(target_class, track_id):
+    global locked_target_id, locked_target_class, lost_target_frames
+    locked_target_id = track_id
+    locked_target_class = target_class
+    lost_target_frames = 0
+    print(f"[Target] Locked class={target_class} ID={track_id}")
 
 def send_status(message):
 
@@ -43,40 +65,59 @@ def follow_target(target_class: str, pil_image: Image.Image):
     - moves forward if centred and target is far
     - stops if centred and target is close
     """
-    #debugs
-    import numpy as np
-    frame_arr = np.array(pil_image)
-    print(f"[Debug] pixel mean={frame_arr.mean():.1f} | std={frame_arr.std():.1f}")
-    pil_image.save("/home/unitree/go2-vlm-agent/images/yolo_input_frame.jpg")
-    print(f"[Debug] Image size: {pil_image.size} | mode: {pil_image.mode}")
+    global lost_target_frames
 
-    # run YOLO
-    detections = get_detections(pil_image)
+    detections = get_tracked_detections(pil_image)
+    print(
+        f"[Tracks] {target_class}: "
+        f"{[(d['track_id'], round(d['confidence'], 2)) for d in detections if d['label'] == target_class]}"
+    )
+
+    # A timeout is latched until the next command explicitly resets the lock.
+    if locked_target_id is not None and lost_target_frames >= MAX_LOST_FRAMES:
+        send_status(f"[Target] Selected {locked_target_class} ID={locked_target_id} lost — issue a new command")
+        execute_action("stop")
+        return
 
     # filter for target class above confidence threshold
     targets = [
         d for d in detections
         if d["label"] == target_class
-        and d["confidence"] > CONFIDENCE_THRESHOLD
+        and d["confidence"] >= CONFIDENCE_THRESHOLD
+        and d["track_id"] is not None
     ]
 
-    print(f"[YOLO] Detections: {[(d['label'], round(d['confidence'], 2)) for d in detections]}")
-
-    # if target cannot be seen, stop
-    if not targets:
-        send_status(f"[Decision] No {target_class} detected — stopping")
-        execute_action("stop")
-        time.sleep(0.1)
-        return
-
-    # pick nearest target (largest bounding box = closest)
-    target = max(targets, key=lambda d: d["box_height"])
+    if locked_target_id is None:
+        if not targets:
+            send_status(f"[Decision] No tracked {target_class} visible — stopping")
+            execute_action("stop")
+            time.sleep(0.1)
+            return
+        # The largest-box heuristic is used only for initial selection.
+        target = max(targets, key=lambda d: d["box_height"])
+        print(f"[Target] Initial selection: {target_class} ID={target['track_id']}")
+        lock_target(target_class, target["track_id"])
+    else:
+        target = next(
+            (d for d in targets
+             if d["track_id"] == locked_target_id
+             and d["label"] == locked_target_class),
+            None,
+        )
+        if target is None:
+            lost_target_frames += 1
+            execute_action("stop")
+            print(f"[Target] Lost {locked_target_class} ID={locked_target_id} ({lost_target_frames}/{MAX_LOST_FRAMES})")
+            if lost_target_frames >= MAX_LOST_FRAMES:
+                send_status(f"[Target] Selected {locked_target_class} ID={locked_target_id} lost — issue a new command")
+            return
+        lost_target_frames = 0
 
     offset_x = target["box_center_x"] - CENTER_X
     box_height = target["box_height"]
 
     print(
-        f"[Decision] Target={target_class} "
+        f"[Target] Following {target_class} ID={locked_target_id} "
         f"| x={int(target['box_center_x'])} "
         f"| offset={int(offset_x)} "
         f"| height={int(box_height)}px "

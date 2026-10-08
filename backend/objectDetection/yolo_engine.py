@@ -9,6 +9,7 @@ MODEL_PATH = "/home/unitree/models/yolo11n.pt"
 
 _model = None
 _model_lock = threading.Lock()
+_inference_lock = threading.Lock()
 
 def get_model():
     global _model
@@ -50,12 +51,28 @@ def get_detections(pil_image: Image.Image) -> list:
     )
 
     frame = np.array(pil_image)
-    results = model(frame, verbose=True, device="cpu")
+    with _inference_lock:
+        results = model(frame, verbose=True, device="cpu")
+        print("[YOLO] Raw boxes:", len(results[0].boxes))
+        return _parse_detections(model, results)
 
-    print("[YOLO] Raw boxes:", len(results[0].boxes))
+
+def get_tracked_detections(pil_image: Image.Image) -> list:
+    """Track consecutive frames using the lazily loaded CPU model."""
+    model = get_model()
+    frame = np.array(pil_image)
+    with _inference_lock:
+        results = model.track(
+            frame, persist=True, device="cpu", conf=0.1, verbose=False
+        )
+        return _parse_detections(model, results, include_track_id=True)
 
 
+def _parse_detections(model, results, include_track_id=False) -> list:
     detections = []
+    if not results or results[0].boxes is None:
+        return detections
+
     for box in results[0].boxes:
         label = model.names[int(box.cls)]
         confidence = float(box.conf)
@@ -72,6 +89,10 @@ def get_detections(pil_image: Image.Image) -> list:
             "box_height": box_height,
             "xyxy": [x1, y1, x2, y2]
         })
+        if include_track_id:
+            detections[-1]["track_id"] = (
+                int(box.id.item()) if box.id is not None else None
+            )
 
     return detections
 

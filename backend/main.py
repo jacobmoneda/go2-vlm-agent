@@ -180,14 +180,8 @@ def perception_loop(camera: Go2Camera):
             continue
         # --- Path 3: Follow command — run YOLO continuously ---
         elif is_follow:
-<<<<<<< HEAD
-
             unload_phi()  # unload Phi to free GPU for YOLO
-            # unload Ollama model to free CPU for YOLO 
-=======
             reset_target_lock()
-            # unload Ollama model to free CPU for YOLO
->>>>>>> llm
             try:
                 requests.post("http://localhost:11434/api/generate", json={
                     "model": "phi3-fast",

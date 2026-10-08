@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-echo "Starting Ollama in CPU mode..."
+echo "Starting Ollama in GPU mode..."
 
-export CUDA_VISIBLE_DEVICES=""
-export OLLAMA_LLM_LIBRARY=cpu
 export OLLAMA_NUM_PARALLEL=1
 export OLLAMA_MAX_LOADED_MODELS=1
 export OLLAMA_KEEP_ALIVE=-1
@@ -39,6 +37,7 @@ curl -fsS \
 echo
 echo "phi3-fast loaded and kept in memory."
 echo "Ollama is running on PID $OLLAMA_PID"
+echo "READY :-)"
 
 # Keep this script/terminal alive
 wait "$OLLAMA_PID"

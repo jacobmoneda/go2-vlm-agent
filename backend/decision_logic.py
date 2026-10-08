@@ -11,10 +11,10 @@ from backend.shared_state import shared_state
 FRAME_WIDTH = 1920
 CENTER_X = FRAME_WIDTH // 2  # 960
 DEAD_ZONE = 60
-CONFIDENCE_THRESHOLD = 0.2
+CONFIDENCE_THRESHOLD = 0.5
 
 last_status = None
-MAX_LOST_FRAMES = 10
+MAX_LOST_FRAMES = 100
 locked_target_id = None
 locked_target_class = None
 lost_target_frames = 0
@@ -47,7 +47,7 @@ def send_status(message):
         last_status = message
 
 # calibrated distance thresholds — based on bounding box height at 1m
-TARGET_HEIGHT_1M = 800
+TARGET_HEIGHT_1M = 600
 DISTANCE_TOLERANCE = 60
 FAR_THRESHOLD = TARGET_HEIGHT_1M - DISTANCE_TOLERANCE    # 740 — move forward
 CLOSE_THRESHOLD = TARGET_HEIGHT_1M + DISTANCE_TOLERANCE  # 860 — move backward

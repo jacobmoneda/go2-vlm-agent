@@ -13,7 +13,7 @@ ChannelFactoryInitialize(0, "eth0")
 from backend.camera.go2_camera import Go2Camera
 #from backend.vlm.phi_engine import run_phi_with_frame, unload_phi
 from backend.robotControl.robot_control import execute_action
-from backend.decision_logic import follow_target
+from backend.decision_logic import follow_target, reset_target_lock
 from backend.utils.input_processor import preprocess_prompt, InvalidPromptError
 from backend.utils.command_router import parse_command
 from backend.shared_state import shared_state
@@ -180,9 +180,14 @@ def perception_loop(camera: Go2Camera):
             continue
         # --- Path 3: Follow command — run YOLO continuously ---
         elif is_follow:
+<<<<<<< HEAD
 
             unload_phi()  # unload Phi to free GPU for YOLO
             # unload Ollama model to free CPU for YOLO 
+=======
+            reset_target_lock()
+            # unload Ollama model to free CPU for YOLO
+>>>>>>> llm
             try:
                 requests.post("http://localhost:11434/api/generate", json={
                     "model": "phi3-fast",
@@ -240,7 +245,6 @@ def perception_loop(camera: Go2Camera):
                 pil_image = Image.open(io.BytesIO(frame_bytes)).convert("RGB")
 
                 pil_image.save("/home/unitree/go2-vlm-agent/images/follow_frame.jpg")
-                print(f"[Debug] Frame size: {pil_image.size} | bytes: {len(frame_bytes)}")
 
                 follow_target(target_class, pil_image)
 

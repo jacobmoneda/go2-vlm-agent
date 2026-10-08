@@ -58,15 +58,14 @@ For initial setup instructions, see:
 
 ### 2. Start Ollama on the Go2
 
-Open an SSH terminal to the robot and start Ollama in CPU mode:
+Open an SSH terminal to the robot and start Ollama:
 
 ```bash
-CUDA_VISIBLE_DEVICES="" OLLAMA_NUM_PARALLEL=1 OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_KEEP_ALIVE=-1 OLLAMA_NUM_THREAD=2 ollama serve
+cd ~/go2-vlm-agent
+./start.sh
 ```
 
 Keep this terminal running.
-
-> Ollama is currently started in CPU mode to avoid CUDA-runner issues on the Jetson platform.
 
 ---
 
@@ -254,8 +253,6 @@ git rev-parse HEAD
 
 ## Notes
 
-- Ollama should currently be started in **CPU mode** on the Jetson.
-- YOLO11n is also currently run on the CPU.
 - The system is under active development and some behaviours may still require tuning.
 - Always test movement commands in a safe, open area with an emergency stop available.
 

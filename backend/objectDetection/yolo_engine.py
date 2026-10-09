@@ -61,11 +61,30 @@ def get_tracked_detections(pil_image: Image.Image) -> list:
     """Track consecutive frames using the lazily loaded CPU model."""
     model = get_model()
     frame = np.array(pil_image)
+
     with _inference_lock:
         results = model.track(
-            frame, persist=True, device="cpu", conf=0.1, verbose=False
+            frame,
+            persist=True,
+            device="cpu",
+            conf=0.1,
+            verbose=False
         )
-        return _parse_detections(model, results, include_track_id=True)
+
+        detections = _parse_detections(
+            model, results, include_track_id=True
+        )
+
+        print(
+            "[YOLO DEBUG] Frame:", pil_image.size,
+            "| Detections:",
+            [
+                (d["label"], round(d["confidence"], 2), d["track_id"])
+                for d in detections
+            ]
+        )
+
+        return detections
 
 
 def _parse_detections(model, results, include_track_id=False) -> list:

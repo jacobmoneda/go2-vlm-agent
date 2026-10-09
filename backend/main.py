@@ -11,7 +11,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 ChannelFactoryInitialize(0, "eth0")
 
 from backend.camera.go2_camera import Go2Camera
-#from backend.vlm.phi_engine import run_phi_with_frame, unload_phi
+from backend.vlm.phi_engine import run_phi_with_frame, unload_phi
 from backend.robotControl.robot_control import execute_action
 from backend.decision_logic import follow_target, reset_target_lock
 from backend.utils.input_processor import preprocess_prompt, InvalidPromptError
@@ -133,7 +133,7 @@ def perception_loop(camera: Go2Camera):
             print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
         # --- Path 2: Vision needed — run Phi (one shot) ---
         elif needs_vision and not is_follow:
-            """print("[Main] Running Phi-3.5 for vision-dependent command...")
+            print("[Main] Running Phi-3.5 for vision-dependent command...")
             shared_state.send_status("[Vision] Analysing camera...")
             t0 = time.time()
 
@@ -173,23 +173,24 @@ def perception_loop(camera: Go2Camera):
 
             last_processed_prompt = raw_prompt
             t_execute = time.time()
-            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s") """
-            print("[Main] Vision/VLM path disabled for YOLO isolation test")
+            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s") 
+            '''print("[Main] Vision/VLM path disabled for YOLO isolation test")
             execute_action("stop")
             last_processed_prompt = raw_prompt
-            continue
+            continue'''
         # --- Path 3: Follow command — run YOLO continuously ---
         elif is_follow:
             unload_phi()  # unload Phi to free GPU for YOLO
+            print("[Main] VLM(Phi) unloaded for YOLO follow")
             reset_target_lock()
-            try:
+            '''try:
                 requests.post("http://localhost:11434/api/generate", json={
                     "model": "phi3-fast",
                     "keep_alive": 0  # unload immediately
                 }, timeout=5)
                 print("[Main] Ollama unloaded for YOLO follow")
             except:
-                pass
+                pass'''
             print("[Main] Starting YOLO follow loop...")
 
             # extract target from prompt — default to person

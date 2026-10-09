@@ -366,6 +366,34 @@ def _keyword_fallback(user_command: str) -> dict:
     Simple keyword-based fallback if Ollama is unavailable or fails.
     """
     cmd = user_command.lower()
+
+        # Direct visual questions should bypass the text LLM
+    vision_phrases = [
+        "describe what you see",
+        "describe what you can see",
+        "what do you see",
+        "what can you see",
+        "describe the scene",
+        "describe your surroundings",
+        "look around",
+        "what is in front of you",
+        "what's in front of you",
+        "what colour",
+        "what color",
+        "how many"
+    ]
+
+    if any(phrase in cmd for phrase in vision_phrases):
+        print("[Router] Vision keyword match")
+        return {
+            "needs_vision": True,
+            "action": None,
+            "is_follow_command": False,
+            "target": None,
+            "confidence": 0.95,
+            "reasoning": "Visual question requiring camera"
+        }
+        
     target = extract_target(user_command)
 
     # Extract YOLO target from the user's command

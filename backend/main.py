@@ -133,7 +133,7 @@ def perception_loop(camera: Go2Camera):
             print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
         # --- Path 2: Vision needed — run Phi (one shot) ---
         elif needs_vision and not is_follow:
-            """print("[Main] Running Phi-3.5 for vision-dependent command...")
+            print("[Main] Running Phi-3.5 for vision-dependent command...")
             shared_state.send_status("[Vision] Analysing camera...")
             t0 = time.time()
 
@@ -173,7 +173,7 @@ def perception_loop(camera: Go2Camera):
 
             last_processed_prompt = raw_prompt
             t_execute = time.time()
-            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s") """
+            print(f"[Latency] preprocess={t_preprocess-t_start:.3f}s | route={t_route-t_preprocess:.3f}s | execute={t_execute-t_route:.3f}s | total={t_execute-t_start:.3f}s")
             print("[Main] Vision/VLM path disabled for YOLO isolation test")
             execute_action("stop")
             last_processed_prompt = raw_prompt

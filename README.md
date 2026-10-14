@@ -1,6 +1,6 @@
 # go2-vlm-agent
 
-An experimental vision-based robotics project for the **Unitree Go2 EDU**, running on an **NVIDIA Jetson Orin NX**. It combines natural-language command routing, camera-based perception, and robot control through a web interface.
+An experimental vision-based robotics project for the **Unitree Go2 EDU**, running on an **NVIDIA Jetson Orin NX**. It combines natural-language command routing, camera-based perception, and robot control through a web interface. This project was undertaken for Auckland University of Technology (AUT) AI Acceleration Lab, as part of the Research and Development final-year project.
 
 ## Architecture
 

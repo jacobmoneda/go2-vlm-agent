@@ -1,273 +1,100 @@
 # go2-vlm-agent
 
-**Vision-Based Autonomous Behaviour Learning for the Unitree Go2**
+An experimental vision-based robotics project for the **Unitree Go2 EDU**, running on an **NVIDIA Jetson Orin NX**. It combines natural-language command routing, camera-based perception, and robot control through a web interface.
 
-`go2-vlm-agent` is an experimental robotics project that combines natural-language command routing, vision-language processing, object detection, and robot control to enable a Unitree Go2 to respond to user commands and perform autonomous behaviours.
+## Architecture
 
-The system uses:
+![System architecture](images/diagram.png)
 
-- **Phi-3 via Ollama** for natural-language command routing
-- **Vision-language processing** for scene understanding
-- **YOLO11n** for real-time object detection and target following
-- **Unitree SDK2** for robot movement and action execution
-- **FastAPI / Uvicorn** for the backend service
-- **React / Vite** for the user interface
+The React/Vite interface sends commands to a FastAPI/Uvicorn backend. Phi-3, served through Ollama, routes requests to direct robot actions or visual processing. The backend uses the Go2 front-facing camera, YOLO11n for object detection and following, and Unitree SDK2 for action execution. A separate vision-language module supports scene understanding when enabled.
 
----
+## Core Capabilities
 
-## System Overview
+- **Natural-language control:** route commands such as “sit down”, “wave”, and “stop” to robot actions.
+- **Object detection:** identify targets in the camera feed, such as a person, bottle, or cup.
+- **Target following:** use bounding-box position to centre a target and box size as a proxy for distance, moving forward or backward as needed and stopping within the desired range.
+- **Scene understanding:** process visual requests through the vision-language module when enabled.
 
-![Architecture Diagram](images/diagram.png)
+## Quick Start
 
-The command router determines whether a user request can be executed directly or requires visual perception.
+These steps assume the project and its dependencies are installed on the appropriate devices. For initial robot and network setup, see [the Go2 setup guide](docs/go2-setup.md).
 
-Examples:
+Connect the development PC to the Go2 network and confirm SSH access to the robot.
 
-```text
-"Sit down"            -> Direct robot action
-"Wave"                -> Direct robot action
-"Detect a person"     -> Vision-based processing
-"Follow the person"   -> YOLO detection and follow control
-"Stop"                -> Direct robot action
-```
+### 1. Start Ollama on the robot
 
----
-
-## Hardware
-
-This project is designed for:
-
-- **Unitree Go2 EDU**
-- **NVIDIA Jetson Orin NX**
-- Go2 front-facing camera
-- Local network connection between the robot and development PC
-
----
-
-## Deployment Instructions
-
-### 1. Connect to the Unitree Go2
-
-Ensure your development PC is connected to the Unitree Go2 network and that the robot can be accessed over SSH.
-
-For initial setup instructions, see:
-
-[`docs/go2-setup.md`](docs/go2-setup.md)
-
----
-
-### 2. Start Ollama on the Go2
-
-Open an SSH terminal to the robot and start Ollama:
+In an SSH terminal:
 
 ```bash
 cd ~/go2-vlm-agent
 ./start.sh
 ```
 
-Keep this terminal running.
+### 2. Start the backend on the robot
 
----
-
-### 3. Start the Robot Backend
-
-Open a **second SSH terminal** to the Go2:
+In a second SSH terminal:
 
 ```bash
 cd ~/go2-vlm-agent
 python3 -m backend.main
 ```
 
-The backend handles:
+The backend manages command routing, camera input, perception, and robot control. Runtime logs appear in this terminal.
 
-- prompt preprocessing
-- command routing
-- camera access
-- vision-language processing
-- YOLO object detection
-- decision logic
-- robot action execution
+### 3. Start the frontend on the development PC
 
-Keep this terminal running. This is where console debug logs will be printed.
-
----
-
-### 4. Start the Frontend
-
-On your **local development PC**, open a terminal:
+From the local project copy:
 
 ```bash
 cd ~/go2-vlm-agent/frontend
 npx vite --mode robot
 ```
 
----
+Keep all three processes running. Open [http://localhost:5173](http://localhost:5173) on the development PC to send commands.
 
-### 5. Open the Web Interface
+## Environment and Dependencies
 
-Open the following address in your browser:
+Recorded versions from the robot's Jetson environment:
 
-[http://localhost:5173](http://localhost:5173)
+| Component                   | Version                                        |
+| --------------------------- | ---------------------------------------------- |
+| Ubuntu                      | 20.04.5 LTS                                    |
+| Linux kernel / architecture | 5.10.104-tegra / aarch64                       |
+| Jetson Linux (L4T)          | R35.3.1                                        |
+| Python                      | 3.8.10                                         |
+| pip                         | 25.0.1                                         |
+| Ollama                      | 0.3.14 (client)                                |
+| CUDA toolkit                | 11.4 (V11.4.315)                               |
+| PyTorch                     | 2.0.0a0+8aa34602.nv23.03, built with CUDA 11.4 |
+| Ultralytics                 | 8.3.228                                        |
+| unitree_sdk2py              | 1.0.1                                          |
 
-You can now send natural-language commands to the Unitree Go2 through the web interface.
-
----
-
-## Required Terminals
-
-During normal deployment, three terminals are used:
-
-| Terminal | Device         | Purpose                          |
-| -------- | -------------- | -------------------------------- |
-| 1        | Unitree Go2    | Ollama LLM server                |
-| 2        | Unitree Go2    | Python backend and robot control |
-| 3        | Development PC | Vite frontend                    |
-
----
-
-## Target Following
-
-YOLO11n is used for real-time target detection and following.
-
-For a detected person, the system can:
-
-1. Detect the person in the camera frame.
-2. Calculate the horizontal offset from the image centre.
-3. Turn left or right to centre the target.
-4. Move forward if the target is too far away.
-5. Move backward if the target is too close.
-6. Stop when the target is centred and within the desired distance.
-
-The current following system uses bounding-box position and size as visual control inputs.
-
----
+The application also uses FastAPI, Uvicorn, Pillow, and NumPy in the backend, and React/Vite in the frontend. Their versions were not included in the environment record. CUDA was available to PyTorch in the recorded environment.
 
 ## Project Structure
 
 ```text
 go2-vlm-agent/
 ├── backend/
-│   ├── camera/
-│   │   └── go2_camera.py
-│   ├── objectDetection/
-│   │   └── yolo_engine.py
-│   ├── robotControl/
-│   │   └── robot_control.py
+│   ├── camera/go2_camera.py           # Robot camera access
+│   ├── objectDetection/yolo_engine.py # YOLO perception
+│   ├── robotControl/robot_control.py  # Unitree actions
 │   ├── utils/
-│   │   ├── command_router.py
-│   │   └── input_processor.py
-│   ├── vlm/
-│   │   └── phi_engine.py
-│   ├── decision_logic.py
-│   ├── shared_state.py
-│   ├── server.py
-│   └── main.py
-├── frontend/
-├── docs/
-├── testing/
+│   │   ├── command_router.py          # Command routing
+│   │   └── input_processor.py         # Prompt preprocessing
+│   ├── vlm/phi_engine.py              # Vision-language processing
+│   ├── decision_logic.py             # Behaviour decisions
+│   ├── shared_state.py               # Shared application state
+│   ├── server.py                     # Backend API
+│   └── main.py                       # Backend entry point
+├── frontend/                         # React/Vite interface
+├── docs/                             # Setup documentation
+├── images/diagram.png                # Architecture diagram
+├── testing/                          # Evaluation scripts
+├── start.sh                          # Ollama startup
 └── README.md
 ```
 
----
+## Safety
 
-## Technologies
-
-### Robotics
-
-- Unitree Go2 EDU
-- Unitree SDK2
-
-### AI and Computer Vision
-
-- Phi-3
-- Ollama
-- YOLO11n
-- Ultralytics
-- PyTorch
-- Pillow
-- NumPy
-
-### Backend
-
-- Python
-- FastAPI
-- Uvicorn
-
-### Frontend
-
-- React
-- Vite
-
----
-
-## Development and Testing
-
-The project has been evaluated across several areas, including:
-
-- YOLO inference time per frame
-- Ollama command-routing latency
-- end-to-end command latency
-- target-centering accuracy
-- target-following behaviour
-- invalid and unsupported command handling
-- VLM response latency
-- cold-start versus warm-model performance
-- robot action execution
-- camera-stream reliability
-
-These tests are used to evaluate both real-time performance and system reliability on the Jetson-based robot platform.
-
----
-
-## Environment and Dependencies
-
-To record the Python dependencies used on the robot:
-
-```bash
-pip3 freeze > requirements.txt
-```
-
-Useful system information can be recorded with:
-
-```bash
-python3 --version
-pip3 --version
-ollama --version
-cat /etc/nv_tegra_release
-nvcc --version
-```
-
-For the Unitree SDK:
-
-```bash
-pip3 show unitree_sdk2py
-```
-
-If the SDK was installed from source, record its Git commit:
-
-```bash
-git rev-parse HEAD
-```
-
----
-
-## Notes
-
-- The system is under active development and some behaviours may still require tuning.
-- Always test movement commands in a safe, open area with an emergency stop available.
-
----
-
-## Documentation
-
-Additional setup documentation is available in:
-
-```text
-docs/go2-setup.md
-```
-
----
-
-## Authors
-
-Developed as part of a research and development project exploring vision-based autonomous behaviour learning for the Unitree Go2.
+This is an experimental system; behaviours may require tuning. Test movement commands in a clear, open area under supervision, with an emergency stop available.

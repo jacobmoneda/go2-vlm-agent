@@ -71,11 +71,11 @@ Checkpoint revisions/hashes are not recorded. Palm detection, Qwen, and SmolVLM 
 
 ## Network and runtime requirements
 
-- Ethernet access to the Go2; documented robot address `192.168.123.18`, example PC address `192.168.123.51/24`.
+- Ethernet access to the Go2; documented robot address `192.168.123.18`.
 - Unitree DDS domain 0 and network interface `eth0` in the main application.
 - Backend on port **8000**, Vite frontend normally on **5173**, and local Ollama service on **11434**.
 - WebSocket defaults to `ws://192.168.123.18:8000/ws`; configurable through `VITE_WS_URL`. Camera URL is fixed to the robot address in the UI.
 - Installed model files, compatible SDK/CUDA libraries, and writable `/home/unitree/go2-vlm-agent/images/` directory.
-- Supervised operation with an independent stop available. The UI stop is a software request; obstacle-aware navigation, authentication/TLS, and a guaranteed persistent emergency-stop latch are not implemented.
+- Supervised operation with an independent stop available. The UI stop is a software request.
 
 Setup and launch instructions: [README](../README.md) and [Go2 setup guide](go2-setup.md).

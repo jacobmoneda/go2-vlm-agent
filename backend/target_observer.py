@@ -84,6 +84,7 @@ class TargetObserver:
         position = 'centre' if centred else ('left' if error < 0 else 'right')
         return {'target': f'{color or ""} {noun}'.strip(), 'visible': True,
                 'confidence': round(det['confidence'], 3), 'track_id': self.last_track_id,
+                'relative_box_height_percent': round(100 * (det['xyxy'][3] - det['xyxy'][1]) / height, 2),
                 'horizontal_error_percent': round(error * 100, 1),
                 'observation': f'target {position}', 'action': 'none (observation-only)',
                 'centring_accuracy_percent': self.accuracy,

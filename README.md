@@ -95,6 +95,10 @@ go2-vlm-agent/
 └── README.md
 ```
 
+## Requirements and Specifications
+
+See the [product requirements and specifications](docs/requirements-and-specifications.md) for hardware, software versions, dependencies, AI models, and runtime requirements.
+
 ## Safety
 
 This is an experimental system; behaviours may require tuning. Test movement commands in a clear, open area under supervision, with an emergency stop available.
